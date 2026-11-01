@@ -1,0 +1,50 @@
+# Dépendances Node.js
+node_modules/
+jspm_packages/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Builds et cache SvelteKit / Vite
+.svelte-kit/
+build/
+dist/
+.vite/
+.output/
+
+# Base de données locale, identifiants, sessions, clés API et historiques sensibles
+data/
+*.db
+*.sqlite
+*.sqlite3
+config.json
+users.json
+data_auth.json
+stats_history.json
+autosort.log
+
+# Variables d'environnement et secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Journaux (logs)
+logs/
+*.log
+
+# Fichiers temporaires, éditeurs et OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+tmp/
+temp/
