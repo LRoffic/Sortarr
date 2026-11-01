@@ -62,8 +62,8 @@ Sortarr intègre des connecteurs dédiés pour les principaux trackers francopho
 ### 1. Cloner le dépôt et installer les dépendances
 
 ```bash
-git clone <url-de-votre-depot>/sortarr.git
-cd sortarr
+git clone https://github.com/LRoffic/Sortarr.git
+cd Sortarr
 npm install
 ```
 
@@ -74,7 +74,7 @@ npm run dev
 ```
 L'application sera accessible sur **`http://localhost:5173`**.
 
-### 3. Compiler et lancer en production
+### 3. Compiler et lancer en production (sans Docker)
 
 ```bash
 # Générer le build de production
@@ -93,6 +93,99 @@ $env:PORT=3000; node build/index.js
 ```
 
 *(Optionnel : si l'un de vos trackers utilise un certificat SSL intermédiaire système sous Windows, vous pouvez démarrer Node avec `node --use-system-ca build/index.js`, bien que Sortarr embarque déjà un fallback TLS automatique).*
+
+---
+
+## 🐳 Déploiement avec Docker & Docker Compose
+
+Sortarr fournit une image Docker officielle multi-architecture (`linux/amd64` pour PC/serveurs x86 et `linux/arm64` pour Raspberry Pi, Apple Silicon, etc.) hébergée sur **GitHub Container Registry (GHCR)**.
+
+### Option 1 : Déploiement avec Docker Compose (Recommandé)
+
+Créez un fichier `docker-compose.yml` dans votre dossier de déploiement :
+
+```yaml
+services:
+  sortarr:
+    # Image officielle multi-architecture sur GHCR
+    image: ghcr.io/lroffic/sortarr:latest
+    container_name: sortarr
+    restart: unless-stopped
+    ports:
+      # Port hôte : Port conteneur (adaptez le premier port selon vos besoins)
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - TZ=Europe/Paris
+    volumes:
+      # Persistance de la configuration, des identifiants et de l'historique des stats
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+```
+
+Lancez le conteneur en arrière-plan :
+
+```bash
+docker compose up -d
+```
+
+Pour mettre à jour Sortarr avec la dernière version publiée :
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+### Option 2 : Lancement direct avec Docker CLI (`docker run`)
+
+```bash
+docker run -d \
+  --name sortarr \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  -e TZ=Europe/Paris \
+  -v $(pwd)/data:/app/data \
+  ghcr.io/lroffic/sortarr:latest
+```
+
+### Option 3 : Construire l'image Docker localement depuis les sources
+
+Si vous préférez builder vous-même l'image :
+
+```bash
+# Cloner le dépôt
+git clone https://github.com/LRoffic/Sortarr.git
+cd Sortarr
+
+# Construire l'image locale
+docker build -t sortarr:local .
+
+# Lancer le conteneur avec l'image construite localement
+docker run -d \
+  --name sortarr \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  -v $(pwd)/data:/app/data \
+  sortarr:local
+```
+
+### 📋 Documentation des paramètres Docker
+
+| Paramètre | Description |
+| :--- | :--- |
+| `image` | `ghcr.io/lroffic/sortarr:latest` pour la dernière version stable, ou un tag précis (ex: `:1.0.0`). |
+| `ports` | `3000:3000` — Redirige le port `3000` de votre machine vers Sortarr. Vous pouvez changer le premier chiffre (ex: `8080:3000`) si le port `3000` est déjà utilisé. |
+| `volumes` | `./data:/app/data` — **Indispensable** : conserve vos identifiants administrateur, votre configuration Prowlarr/trackers et tout l'historique des ratios même lors de la recréation du conteneur. |
+| `environment` | `TZ=Europe/Paris` (fuseau horaire), `PORT=3000`, `HOST=0.0.0.0`. |
+| `user` | Le conteneur s'exécute automatiquement avec l'utilisateur sécurisé non-root `node` (UID/GID 1000). |
+| `healthcheck` | Vérifie périodiquement la disponibilité du serveur HTTP via `wget`. |
 
 ---
 
