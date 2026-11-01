@@ -1,9 +1,51 @@
 <script>
-  import { untrack } from 'svelte';
+  import { untrack, onMount } from 'svelte';
   import { getTrackerLogo, getTrackerInitials } from '$lib/logos.js';
 
   let { data } = $props();
   let failedLogos = $state({});
+
+  // Système de mise à jour GitHub Releases (https://github.com/LRoffic/Sortarr)
+  let updateStatus = $state(null);
+  let isCheckingUpdate = $state(false);
+  let isInstallingUpdate = $state(false);
+  let updateResult = $state(null);
+
+  async function checkUpdates(force = false) {
+    isCheckingUpdate = true;
+    try {
+      const res = await fetch(`/api/update${force ? '?force=1' : ''}`);
+      updateStatus = await res.json();
+    } catch (e) {
+      updateStatus = { ok: false, error: e.message };
+    } finally {
+      isCheckingUpdate = false;
+    }
+  }
+
+  async function installUpdate() {
+    isInstallingUpdate = true;
+    updateResult = null;
+    try {
+      const res = await fetch('/api/update', { method: 'POST' });
+      const r = await res.json();
+      if (!r.ok) throw new Error(r.error || 'Erreur lors de la mise à jour');
+      updateResult = {
+        ok: true,
+        text: `Mise à jour v${r.installedVersion} (${r.tagName}) installée et compilée avec succès ! Redémarrez le serveur Node si vous êtes en mode production.`,
+        logs: r.logs || []
+      };
+      if (r.status) updateStatus = r.status;
+    } catch (e) {
+      updateResult = { ok: false, text: e.message, logs: [] };
+    } finally {
+      isInstallingUpdate = false;
+    }
+  }
+
+  onMount(() => {
+    checkUpdates(false);
+  });
 
   // untrack() prevents Svelte 5 from warning about capturing initial prop values in $state
   let prowlarrUrl = $state(untrack(() => data.config.prowlarrUrl ?? ''));
@@ -1024,6 +1066,126 @@
         </button>
       </div>
     </div>
+  </div>
+
+  <!-- Système de mise à jour (GitHub Releases : LRoffic/Sortarr) -->
+  <div id="update" class="mt-8 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+    <div class="flex items-start justify-between gap-3 flex-wrap">
+      <div>
+        <h3 class="text-sm font-semibold">🔄 Mise à jour automatique (GitHub Releases)</h3>
+        <p class="text-xs mt-0.5" style="color: var(--text-muted);">
+          Vérifie et installe les nouvelles versions depuis
+          <a href="https://github.com/LRoffic/Sortarr/releases" target="_blank" class="underline" style="color: #a78bfa;">
+            github.com/LRoffic/Sortarr
+          </a>
+          tout en préservant vos données (<code>data/</code>).
+        </p>
+      </div>
+      <button
+        type="button"
+        onclick={() => checkUpdates(true)}
+        disabled={isCheckingUpdate || isInstallingUpdate}
+        class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shrink-0"
+        style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+      >
+        {isCheckingUpdate ? '⏳ Vérification...' : '🔍 Vérifier les mises à jour'}
+      </button>
+    </div>
+
+    {#if updateStatus}
+      <div class="rounded-lg p-3 space-y-3 text-xs" style="background: var(--bg-card); border: 1px solid var(--border);">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-3 flex-wrap">
+            <div>
+              <span style="color: var(--text-muted);">Version installée :</span>
+              <span class="font-mono font-bold ml-1 px-2 py-0.5 rounded" style="background: #7c3aed22; color: #a78bfa;">
+                v{updateStatus.currentVersion || '1.0.0'}
+              </span>
+            </div>
+            <div>
+              <span style="color: var(--text-muted);">Dernière release GitHub :</span>
+              {#if updateStatus.noReleasesYet}
+                <span class="font-mono ml-1 px-2 py-0.5 rounded" style="background: #1e293b; color: #94a3b8;">
+                  Aucune release publiée
+                </span>
+              {:else}
+                <span class="font-mono font-bold ml-1 px-2 py-0.5 rounded"
+                      style="background: {updateStatus.updateAvailable ? '#22c55e22' : '#1e293b'}; color: {updateStatus.updateAvailable ? '#4ade80' : '#cbd5e1'};">
+                  {updateStatus.tagName || `v${updateStatus.latestVersion}`}
+                </span>
+              {/if}
+            </div>
+          </div>
+
+          {#if updateStatus.updateAvailable}
+            <span class="px-2 py-0.5 rounded font-semibold" style="background: #22c55e22; color: #4ade80; border: 1px solid #22c55e44;">
+              ✨ Nouvelle version disponible !
+            </span>
+          {:else if updateStatus.ok}
+            <span class="px-2 py-0.5 rounded font-medium" style="background: #1e293b; color: #94a3b8;">
+              ✅ Vous êtes à jour
+            </span>
+          {/if}
+        </div>
+
+        {#if !updateStatus.ok && updateStatus.error}
+          <div class="p-2.5 rounded" style="background: #ef444422; border: 1px solid #ef4444; color: #f87171;">
+            ❌ {updateStatus.error}
+          </div>
+        {/if}
+
+        {#if updateStatus.releaseNotes && !updateStatus.noReleasesYet}
+          <div class="space-y-1">
+            <div class="text-[11px] font-semibold" style="color: var(--text-muted);">
+              📋 Notes de version ({updateStatus.releaseName || updateStatus.tagName}) :
+            </div>
+            <pre class="p-2.5 rounded text-[11px] font-mono whitespace-pre-wrap max-h-40 overflow-y-auto"
+                 style="background: var(--bg-secondary); color: #cbd5e1; border: 1px solid var(--border);">{updateStatus.releaseNotes}</pre>
+          </div>
+        {/if}
+
+        {#if updateStatus.updateAvailable}
+          <div class="flex items-center justify-between pt-2 flex-wrap gap-2" style="border-top: 1px solid var(--border);">
+            <a href={updateStatus.htmlUrl} target="_blank" class="underline text-[11px]" style="color: #a78bfa;">
+              Voir la release sur GitHub ↗
+            </a>
+            <button
+              type="button"
+              onclick={installUpdate}
+              disabled={isInstallingUpdate}
+              class="px-4 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
+              style="background: #22c55e; color: #052e16; opacity: {isInstallingUpdate ? 0.6 : 1};"
+            >
+              {isInstallingUpdate ? '⏳ Téléchargement & compilation en cours...' : `🚀 Installer la mise à jour (${updateStatus.tagName})`}
+            </button>
+          </div>
+        {/if}
+      </div>
+    {/if}
+
+    {#if updateResult}
+      <div class="rounded-lg p-3 space-y-2 text-xs"
+           style="background: {updateResult.ok ? '#22c55e22' : '#ef444422'}; border: 1px solid {updateResult.ok ? '#22c55e' : '#ef4444'}; color: {updateResult.ok ? '#4ade80' : '#f87171'};">
+        <div class="font-semibold">{updateResult.ok ? '✅' : '❌'} {updateResult.text}</div>
+        {#if updateResult.logs?.length > 0}
+          <details class="mt-1">
+            <summary class="cursor-pointer text-[11px] underline">Voir le journal détaillé de mise à jour</summary>
+            <div class="mt-2 p-2 rounded font-mono text-[11px] space-y-1 max-h-48 overflow-y-auto"
+                 style="background: #090d16; color: #cbd5e1; border: 1px solid #1e293b;">
+              {#each updateResult.logs as l}
+                <div>
+                  <span style="color: #64748b;">[{l.time}]</span>
+                  <span style="color: #a78bfa;"> {l.step}</span>
+                  {#if l.detail}
+                    <div class="pl-4 text-[10px]" style="color: #94a3b8;">{l.detail}</div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </details>
+        {/if}
+      </div>
+    {/if}
   </div>
 
   <!-- Info box -->

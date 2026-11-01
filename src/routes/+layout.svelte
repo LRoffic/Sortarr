@@ -1,7 +1,20 @@
 <script>
   import '../app.css';
   import { page } from '$app/stores';
+  import { onMount } from 'svelte';
+
   let { data, children } = $props();
+  let updateInfo = $state(null);
+
+  onMount(async () => {
+    if (!data?.user) return;
+    try {
+      const res = await fetch('/api/update');
+      if (res.ok) {
+        updateInfo = await res.json();
+      }
+    } catch {}
+  });
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -12,19 +25,29 @@
 <div class="min-h-screen flex flex-col" style="background: var(--bg-primary);">
   <!-- Navbar -->
   <nav class="border-b" style="background: var(--bg-secondary); border-color: var(--border);">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between flex-wrap gap-2">
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm" 
              style="background: var(--accent); color: white;">
           S
         </div>
         <span class="font-bold text-lg tracking-tight">Sortarr</span>
-        <span class="text-xs px-2 py-0.5 rounded-full" style="background: #7c3aed22; color: #a78bfa;">
-          Prowlarr Priority Manager
+        <span class="text-[11px] font-mono px-2 py-0.5 rounded-full" style="background: #7c3aed22; color: #a78bfa;">
+          v{data?.currentVersion || '1.0.0'}
         </span>
+        {#if updateInfo?.updateAvailable}
+          <a
+            href="/settings#update"
+            class="text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-transform hover:scale-105"
+            style="background: #22c55e22; color: #4ade80; border: 1px solid #22c55e66;"
+            title="Nouvelle release disponible sur GitHub ({updateInfo.tagName})"
+          >
+            ⬆️ Mise à jour v{updateInfo.latestVersion} dispo !
+          </a>
+        {/if}
       </div>
       {#if data?.user}
-        <div class="flex items-center gap-1.5">
+        <div class="flex items-center gap-1.5 flex-wrap">
           <a href="/" 
              class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
              style="{$page.url.pathname === '/' ? 'background: var(--accent); color: white;' : 'color: var(--text-muted);'}">
@@ -59,6 +82,6 @@
   </main>
 
   <footer class="text-center py-4 text-xs" style="color: var(--text-muted);">
-    Sortarr • Données actualisées manuellement ou toutes les 20 min
+    Sortarr v{data?.currentVersion || '1.0.0'} • <a href="https://github.com/LRoffic/Sortarr/releases" target="_blank" class="underline hover:text-purple-400">GitHub Releases</a> • Données actualisées manuellement ou toutes les 20 min
   </footer>
 </div>
