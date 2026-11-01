@@ -320,6 +320,25 @@ export async function performUpdate() {
   });
   log('Build terminé avec succès', buildOut.trim().slice(-400));
 
+  // Signal de redémarrage pour Phusion Passenger / cPanel / Plesk (Node.js Selector)
+  try {
+    const tmpDir = path.join(rootDir, 'tmp');
+    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, 'restart.txt'), String(Date.now()));
+    log('Signal de redémarrage Phusion Passenger envoyé (tmp/restart.txt)');
+  } catch {}
+
+  // Si l'application est gérée par PM2 ou un gestionnaire de processus,
+  // programmer un redémarrage gracieux après la fin de la réponse HTTP
+  setTimeout(() => {
+    try {
+      if (typeof process.send === 'function') {
+        // Mode PM2 cluster
+        process.send('restart');
+      }
+    } catch {}
+  }, 1000);
+
   // Invalide le cache
   updateCache = { checkedAt: 0, data: null };
   const updatedStatus = await checkForUpdates({ force: true });
