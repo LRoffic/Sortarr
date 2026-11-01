@@ -19,6 +19,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -38,20 +41,20 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub (optionnel)
-        if: "${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}"
+        if: env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
 
       - name: Determine Docker registries & image targets
         id: targets
         shell: bash
         run: |
           TARGETS="ghcr.io/${{ github.repository }}"
-          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+          if [ -n "$DOCKERHUB_USERNAME" ]; then
             TARGETS="${TARGETS}
-          ${{ secrets.DOCKERHUB_USERNAME }}/sortarr"
+          ${DOCKERHUB_USERNAME}/sortarr"
           fi
           echo "images<<EOF" >> $GITHUB_OUTPUT
           echo "$TARGETS" >> $GITHUB_OUTPUT
