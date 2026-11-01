@@ -148,7 +148,6 @@
       (idx) =>
         idx.tracker &&
         !idx.tracker.error &&
-        !idx.tracker.public &&
         ((idx.tracker.points !== null && idx.tracker.points !== undefined) ||
           (idx.tracker.seeding !== null && idx.tracker.seeding !== undefined) ||
           (idx.tracker.flTokens !== null && idx.tracker.flTokens > 0) ||
@@ -159,7 +158,7 @@
   let totalSeeds = $derived(
     indexers.reduce(
       (sum, idx) =>
-        sum + (idx.tracker && !idx.tracker.public && Number.isFinite(idx.tracker.seeding) ? idx.tracker.seeding : 0),
+        sum + (idx.tracker && Number.isFinite(idx.tracker.seeding) ? idx.tracker.seeding : 0),
       0
     )
   );
@@ -425,7 +424,7 @@
                 {indexer.privacy === 'private' ? 'Privé' : indexer.privacy === 'semiPrivate' ? 'Semi-privé' : 'Public'}
               </span>
 
-              {#if indexer.tracker && !indexer.tracker.public && indexer.tracker.seeding !== null && indexer.tracker.seeding !== undefined}
+              {#if indexer.tracker && indexer.tracker.seeding !== null && indexer.tracker.seeding !== undefined}
                 <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold flex-shrink-0"
                       title="Nombre de torrents actuellement en seed sur ce tracker"
                       style="background: #22c55e18; color: #4ade80; border: 1px solid #22c55e38;">
@@ -449,8 +448,16 @@
 
           <!-- Stats réelles du tracker -->
           {#if indexer.tracker?.public}
-            <div class="hidden sm:block text-xs text-right flex-shrink-0" style="color: var(--text-muted);">
-              Tracker public<br />pas de ratio
+            <div class="hidden sm:flex items-center gap-4 text-xs text-right flex-shrink-0">
+              <div style="color: var(--text-muted);">
+                Tracker public<br />pas de ratio
+              </div>
+              <div class="pl-3" style="border-left: 1px solid var(--border);">
+                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">SEEDS</div>
+                <div class="font-semibold text-sm" style="color: #4ade80;">
+                  {indexer.tracker.seeding !== null && indexer.tracker.seeding !== undefined ? indexer.tracker.seeding : '—'}
+                </div>
+              </div>
             </div>
           {:else if indexer.tracker?.error}
             <div class="hidden sm:block text-xs text-right max-w-[16rem] flex-shrink-0" style="color: #f87171;" title={indexer.tracker.error}>

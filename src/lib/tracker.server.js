@@ -1288,12 +1288,15 @@ export async function fetchApiRatioStats(indexer, cfg, apiRatioUrl) {
 export function manualStats(cfg) {
   const up = toNumber(cfg.manualUpGB);
   const down = toNumber(cfg.manualDownGB);
+  const seeding = cfg.manualSeeds !== '' && cfg.manualSeeds !== null && cfg.manualSeeds !== undefined
+    ? toNumber(cfg.manualSeeds)
+    : null;
   return buildStats({
     uploaded: up === null ? null : up * 1024 ** 3,
     downloaded: down === null ? null : down * 1024 ** 3,
     ratio: null,
     points: null,
-    seeding: null,
+    seeding,
     freeleech: null
   });
 }
@@ -1319,6 +1322,9 @@ export async function getTrackerStats(indexer, cfg, ctx = {}) {
   const runCore = async () => {
     try {
       if (cfg.type === 'public') {
+        const seeding = cfg.manualSeeds !== '' && cfg.manualSeeds !== null && cfg.manualSeeds !== undefined
+          ? toNumber(cfg.manualSeeds)
+          : null;
         if (debugLogs) {
           pushDebugLog({
             method: 'LOCAL',
@@ -1327,10 +1333,18 @@ export async function getTrackerStats(indexer, cfg, ctx = {}) {
             status: 200,
             durationMs: 0,
             tlsFallback: false,
-            responsePreview: 'Tracker public configuré sans requête réseau (pas de ratio).'
+            responsePreview: `Tracker public configuré sans requête réseau (seeds: ${seeding !== null ? seeding : 'non défini'}).`
           });
         }
-        return { public: true, freeleech: cfg.freeleech === 'on' ? true : null };
+        return {
+          public: true,
+          freeleech: cfg.freeleech === 'on' ? true : null,
+          seeding,
+          uploaded: null,
+          downloaded: null,
+          ratio: null,
+          points: null
+        };
       }
       let s;
       const { baseUrl, apiKey } = resolveTrackerConn(indexer, cfg);

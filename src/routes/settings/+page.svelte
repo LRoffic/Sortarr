@@ -224,7 +224,7 @@
   // Config par tracker (clé = id indexeur Prowlarr)
   const emptyTracker = () => ({
     enabled: false, type: 'unit3d', baseUrl: '', apiKey: '',
-    freeleech: 'auto', manualUpGB: '', manualDownGB: '',
+    freeleech: 'auto', manualUpGB: '', manualDownGB: '', manualSeeds: '',
     authMode: 'bearer', apiRatioKey: '', pathUp: '', pathDown: '', pathRatio: '', pathPoints: '', pathFl: ''
   });
   function guessTypeByName(name, privacy) {
@@ -909,6 +909,11 @@
                          class="px-2 py-1.5 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
                   <input type="number" step="any" bind:value={t.manualDownGB} placeholder="Download (Go)"
                          class="px-2 py-1.5 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
+                  <input type="number" step="1" min="0" bind:value={t.manualSeeds} placeholder="🌱 Torrents en seed actifs (optionnel, ex: 15)"
+                         class="px-2 py-1.5 rounded col-span-2" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
+                {:else if t.type === 'public'}
+                  <input type="number" step="1" min="0" bind:value={t.manualSeeds} placeholder="🌱 Torrents en seed actifs sur ce tracker (optionnel, ex: 15)"
+                         class="px-2 py-1.5 rounded col-span-2" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
                 {/if}
               </div>
             {/if}
@@ -917,7 +922,7 @@
               <div class="mt-2 flex items-center justify-between gap-2 flex-wrap text-xs" style="color: {test.ok ? '#4ade80' : '#f87171'};">
                 <div>
                   {#if test.ok && test.stats.public}
-                    ✅ Tracker public — aucun ratio géré
+                    ✅ Tracker public — aucun ratio géré {test.stats.seeding !== null && test.stats.seeding !== undefined ? `• 🌱 ${test.stats.seeding} seeds actifs` : ''}
                   {:else if test.ok}
                     ✅ Ratio {test.stats.infinite ? '∞' : (test.stats.ratio?.toFixed(2) ?? '—')} • ↑ {fmtBytes(test.stats.uploaded)} • ↓ {fmtBytes(test.stats.downloaded)} • Buffer {fmtBytes(test.stats.buffer)} • {test.stats.pointsLabel || 'Points'} : {test.stats.points !== null && test.stats.points !== undefined ? Math.round(test.stats.points).toLocaleString('fr-FR') : '—'} • 🌱 Seeds : {test.stats.seeding !== null && test.stats.seeding !== undefined ? test.stats.seeding : '—'} • FL : {test.stats.freeleech === null ? 'non détecté' : test.stats.freeleech ? 'oui' : 'non'}
                   {:else}
