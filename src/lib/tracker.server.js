@@ -5,6 +5,7 @@
 import crypto from 'crypto';
 import https from 'https';
 import http from 'http';
+import zlib from 'zlib';
 import { AsyncLocalStorage } from 'async_hooks';
 
 const debugStorage = new AsyncLocalStorage();
@@ -161,8 +162,18 @@ function fetchWithTlsFallback(urlStr, { headers = {}, timeoutMs = 15000, maxRedi
           return;
         }
         const chunks = [];
-        res.on('data', (chunk) => chunks.push(chunk));
-        res.on('end', () => {
+        const encoding = (res.headers['content-encoding'] || '').toLowerCase();
+        let stream = res;
+        if (encoding === 'gzip') {
+          stream = res.pipe(zlib.createGunzip());
+        } else if (encoding === 'deflate') {
+          stream = res.pipe(zlib.createInflate());
+        } else if (encoding === 'br') {
+          stream = res.pipe(zlib.createBrotliDecompress());
+        }
+
+        stream.on('data', (chunk) => chunks.push(chunk));
+        stream.on('end', () => {
           const text = Buffer.concat(chunks).toString('utf-8');
           pushDebugLog({
             method: 'GET',
@@ -180,6 +191,21 @@ function fetchWithTlsFallback(urlStr, { headers = {}, timeoutMs = 15000, maxRedi
             text: async () => text,
             json: async () => JSON.parse(text)
           });
+        });
+        stream.on('error', (err) => {
+          // Si la décompression échoue, basculer sur les chunks bruts
+          try {
+            const rawText = Buffer.concat(chunks).toString('utf-8');
+            resolve({
+              ok: res.statusCode >= 200 && res.statusCode < 300,
+              status: res.statusCode || 0,
+              url: parsed.toString(),
+              text: async () => rawText,
+              json: async () => JSON.parse(rawText)
+            });
+          } catch {
+            reject(err);
+          }
         });
       }
     );
@@ -585,101 +611,143 @@ export async function fetchCrazySpiritsStats(indexer, cfg, apiKey, apiRatioUrl) 
     if (apiRatioUrl) return fetchApiRatioStats(indexer, { ...cfg, apiRatioKey: 'crazyspirits' }, apiRatioUrl);
     throw new Error("Cookie 'uid=...; pass=...' requis dans le champ Clé/Cookie (ou configurez l'URL api-ratio)");
   }
+
   const base = (!cfg.baseUrl || cfg.baseUrl.includes('feed.php') || cfg.baseUrl.includes('jackett'))
     ? 'https://crazyspirits.com'
     : cfg.baseUrl.replace(/\/+$/, '');
   const uidM = cookieStr.match(/(?:^|;\s*)uid=([^;\s]+)/);
-  const uid = uidM ? uidM[1] : '';
+  const uid = uidM ? decodeURIComponent(uidM[1]).replace(/["']/g, '') : '';
 
   const headers = {
     'User-Agent': DEFAULT_UA,
-    Accept: 'text/html,application/xhtml+xml',
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
     Referer: `${base}/`,
     Cookie: cookieStr
   };
-  const [homeRes, accRes] = await Promise.all([
-    fetchWithTlsFallback(`${base}/index.php`, { headers, timeoutMs: 15000 }),
-    uid
-      ? fetchWithTlsFallback(`${base}/account-details.php?id=${encodeURIComponent(uid)}`, { headers, timeoutMs: 15000 }).catch(() => null)
-      : Promise.resolve(null)
-  ]);
-  const homeHtml = await homeRes.text();
-  const accHtml = accRes ? await accRes.text() : '';
-  if (
-    homeRes.url.toLowerCase().includes('account-login') ||
-    (homeHtml.toLowerCase().includes('connexion') && homeHtml.includes('name="username"'))
-  ) {
-    throw new Error('Session Crazy Spirits expirée ou cookie uid/pass invalide');
-  }
 
-  const parseHtml = (html) => {
-    const infobar = html.match(/<div[^>]*id=["']infobar["'][^>]*>([\s\S]*?)<\/div>/i);
-    if (infobar) {
-      const fonts = [...infobar[1].matchAll(/<font[^>]*>([\s\S]*?)<\/font>/gi)].map((m) =>
-        m[1].replace(/<[^>]+>/g, '').trim()
+  const scrapeDirect = async () => {
+    const [homeRes, accRes] = await Promise.all([
+      fetchWithTlsFallback(`${base}/index.php`, { headers, timeoutMs: 15000 }),
+      uid
+        ? fetchWithTlsFallback(`${base}/account-details.php?id=${encodeURIComponent(uid)}`, { headers, timeoutMs: 15000 }).catch(() => null)
+        : Promise.resolve(null)
+    ]);
+
+    if (homeRes.status === 403) {
+      throw new Error(`Accès refusé par Crazy Spirits (HTTP 403). L'IP de votre serveur (${base}) est probablement bloquée par le pare-feu du tracker ou Plesk/Cloudflare.`);
+    }
+    if (homeRes.status === 503) {
+      throw new Error(`Crazy Spirits a retourné HTTP 503 (Protection anti-DDoS / Cloudflare ou maintenance en cours).`);
+    }
+    if (homeRes.status >= 400) {
+      throw new Error(`Erreur HTTP ${homeRes.status} retournée par Crazy Spirits sur ${base}/index.php`);
+    }
+
+    const homeHtml = await homeRes.text();
+    const accHtml = accRes ? await accRes.text() : '';
+
+    if (
+      homeRes.url.toLowerCase().includes('account-login') ||
+      (homeHtml.toLowerCase().includes('connexion') && homeHtml.includes('name="username"'))
+    ) {
+      throw new Error(
+        "Session Crazy Spirits expirée ou refusée pour cette IP. Crazy Spirits lie souvent la session à l'adresse IP de connexion. Si votre serveur de production a une IP différente de celle de votre navigateur, reconnectez-vous depuis la même IP ou passez par api-ratio."
       );
-      if (fonts.length >= 2) {
-        const dl = parseSize(fonts[0]);
-        const up = parseSize(fonts[1]);
-        if (up !== null || dl !== null) return { up: up ?? 0, dl: dl ?? 0 };
+    }
+
+    const parseHtml = (html) => {
+      const infobar = html.match(/<div[^>]*id=["']infobar["'][^>]*>([\s\S]*?)<\/div>/i);
+      if (infobar) {
+        const fonts = [...infobar[1].matchAll(/<font[^>]*>([\s\S]*?)<\/font>/gi)].map((m) =>
+          m[1].replace(/<[^>]+>/g, '').trim()
+        );
+        if (fonts.length >= 2) {
+          const dl = parseSize(fonts[0]);
+          const up = parseSize(fonts[1]);
+          if (up !== null || dl !== null) return { up: up ?? 0, dl: dl ?? 0 };
+        }
+      }
+      const upM = html.match(/Partager\s*:[\s\S]*?<span[^>]*class=["']detail_fix["'][^>]*>([\s\S]*?)<\/span>/i);
+      const dlM = html.match(/T[ée]l[ée]charger\s*:[\s\S]*?<span[^>]*class=["']detail_fix["'][^>]*>([\s\S]*?)<\/span>/i);
+      return {
+        up: upM ? parseSize(upM[1].replace(/<[^>]+>/g, '').trim()) : null,
+        dl: dlM ? parseSize(dlM[1].replace(/<[^>]+>/g, '').trim()) : null
+      };
+    };
+
+    let { up, dl } = parseHtml(homeHtml);
+    if ((up === null || up === 0) && (dl === null || dl === 0) && accHtml) {
+      const acc = parseHtml(accHtml);
+      up = acc.up;
+      dl = acc.dl;
+    }
+    if (up === null && dl === null) {
+      const preview = homeHtml.slice(0, 180).replace(/\s+/g, ' ').trim();
+      throw new Error(`Impossible de lire les stats Crazy Spirits (aperçu page : "${preview || 'vide'}")`);
+    }
+
+    const cleanText = `${homeHtml} ${accHtml}`
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\u00a0/g, ' ');
+    const bonusM =
+      cleanText.match(/Crazy\s+Bonus\s*[:\-]?\s*([0-9]+(?:[.,][0-9]+)?)/i) ||
+      cleanText.match(/(?:bonus|points?|cr[ée]dit)\s*[:\-]?\s*([0-9]+(?:[.,][0-9]+)?)/i);
+
+    // Extraction du nombre de torrents en partage sur account-details.php
+    let seeding = null;
+    let leeching = null;
+    if (accHtml) {
+      const seedSection = accHtml.match(/Actuellement\s+en\s+partage[\s\S]*?<table[^>]*>([\s\S]*?)<\/table>/i);
+      if (seedSection) {
+        seeding = [...seedSection[1].matchAll(/torrents-details\.php\?id=\d+/gi)].length;
+      } else if (/Actuellement\s+en\s+partage/i.test(accHtml)) {
+        seeding = 0;
+      }
+      const leechSection = accHtml.match(/Actuellement\s+en\s+t[ée]l[ée]chargement[\s\S]*?<table[^>]*>([\s\S]*?)<\/table>/i);
+      if (leechSection) {
+        leeching = [...leechSection[1].matchAll(/torrents-details\.php\?id=\d+/gi)].length;
       }
     }
-    const upM = html.match(/Partager\s*:[\s\S]*?<span[^>]*class=["']detail_fix["'][^>]*>([\s\S]*?)<\/span>/i);
-    const dlM = html.match(/T[ée]l[ée]charger\s*:[\s\S]*?<span[^>]*class=["']detail_fix["'][^>]*>([\s\S]*?)<\/span>/i);
-    return {
-      up: upM ? parseSize(upM[1].replace(/<[^>]+>/g, '').trim()) : null,
-      dl: dlM ? parseSize(dlM[1].replace(/<[^>]+>/g, '').trim()) : null
-    };
+    const extraBadges = [];
+    const invM = cleanText.match(/Tu\s+as\s+(\d+)\s+invitations?/i);
+    if (invM && Number(invM[1]) > 0) extraBadges.push(`✉️ ${invM[1]} invit.`);
+
+    return buildStats({
+      uploaded: up ?? 0,
+      downloaded: dl ?? 0,
+      ratio: null,
+      points: bonusM ? toNumber(bonusM[1]) : null,
+      pointsLabel: 'CRAZY BONUS',
+      seeding,
+      leeching,
+      extraBadges,
+      freeleech: null
+    });
   };
 
-  let { up, dl } = parseHtml(homeHtml);
-  if ((up === null || up === 0) && (dl === null || dl === 0) && accHtml) {
-    const acc = parseHtml(accHtml);
-    up = acc.up;
-    dl = acc.dl;
-  }
-  if (up === null && dl === null) {
-    throw new Error('Impossible de lire les stats Crazy Spirits sur la page');
-  }
-  const cleanText = `${homeHtml} ${accHtml}`
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\u00a0/g, ' ');
-  const bonusM =
-    cleanText.match(/Crazy\s+Bonus\s*[:\-]?\s*([0-9]+(?:[.,][0-9]+)?)/i) ||
-    cleanText.match(/(?:bonus|points?|cr[ée]dit)\s*[:\-]?\s*([0-9]+(?:[.,][0-9]+)?)/i);
-
-  // Extraction du nombre de torrents en partage sur account-details.php
-  let seeding = null;
-  let leeching = null;
-  if (accHtml) {
-    const seedSection = accHtml.match(/Actuellement\s+en\s+partage[\s\S]*?<table[^>]*>([\s\S]*?)<\/table>/i);
-    if (seedSection) {
-      seeding = [...seedSection[1].matchAll(/torrents-details\.php\?id=\d+/gi)].length;
-    } else if (/Actuellement\s+en\s+partage/i.test(accHtml)) {
-      seeding = 0;
+  try {
+    return await scrapeDirect();
+  } catch (err) {
+    if (apiRatioUrl) {
+      try {
+        return await fetchApiRatioStats(indexer, { ...cfg, apiRatioKey: 'crazyspirits' }, apiRatioUrl);
+      } catch {}
     }
-    const leechSection = accHtml.match(/Actuellement\s+en\s+t[ée]l[ée]chargement[\s\S]*?<table[^>]*>([\s\S]*?)<\/table>/i);
-    if (leechSection) {
-      leeching = [...leechSection[1].matchAll(/torrents-details\.php\?id=\d+/gi)].length;
-    }
+    throw err;
   }
-  const extraBadges = [];
-  const invM = cleanText.match(/Tu\s+as\s+(\d+)\s+invitations?/i);
-  if (invM && Number(invM[1]) > 0) extraBadges.push(`✉️ ${invM[1]} invit.`);
-
-  return buildStats({
-    uploaded: up ?? 0,
-    downloaded: dl ?? 0,
-    ratio: null,
-    points: bonusM ? toNumber(bonusM[1]) : null,
-    pointsLabel: 'CRAZY BONUS',
-    seeding,
-    leeching,
-    extraBadges,
-    freeleech: null
-  });
 }
 
 /**
