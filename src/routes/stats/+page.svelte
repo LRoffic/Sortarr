@@ -9,9 +9,27 @@
   let selectedTrackerId = $state('all');
   let periodDays = $state(30); // 7, 14, 30, 90, 365
   let viewMode = $state('tracker'); // 'tracker' | 'daily' | 'matrix'
+  let chartMetric = $state('ratio'); // 'ratio' | 'points'
   let isRefreshing = $state(false);
   let statusMsg = $state(null);
   let failedLogos = $state({});
+
+  function fmtPoints(pts) {
+    if (pts === null || pts === undefined || !Number.isFinite(pts)) return '—';
+    if (Math.abs(pts) > 0 && Math.abs(pts) < 100 && pts % 1 !== 0) {
+      return pts.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+    }
+    return Math.round(pts).toLocaleString('fr-FR');
+  }
+
+  function fmtDeltaPoints(d) {
+    if (d === null || d === undefined || !Number.isFinite(d) || Math.abs(d) < 0.01) return '0';
+    const prefix = d > 0 ? '+' : '';
+    if (Math.abs(d) < 100 && d % 1 !== 0) {
+      return `${prefix}${d.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}`;
+    }
+    return `${prefix}${Math.round(d).toLocaleString('fr-FR')}`;
+  }
 
   function fmtBytes(b) {
     if (b === null || b === undefined || !Number.isFinite(b)) return '—';
@@ -92,22 +110,49 @@
       : trackers.filter((t) => String(t.id) === String(selectedTrackerId))
   );
 
-  // Génère les coordonnées SVG pour la courbe d'évolution du ratio (ou de l'upload si ratio infini)
-  function buildChartPoints(historyAsc) {
+  let trackersWithPointsOrSeeds = $derived(
+    visibleTrackers.filter(
+      (tr) =>
+        (tr.latest?.seedbonus !== null && tr.latest?.seedbonus !== undefined) ||
+        (tr.latest?.seeding !== null && tr.latest?.seeding !== undefined) ||
+        (tr.latest?.extraBadges && tr.latest.extraBadges.length > 0)
+    )
+  );
+
+  let totalSeeds = $derived(
+    visibleTrackers.reduce((sum, tr) => sum + (Number.isFinite(tr.latest?.seeding) ? tr.latest.seeding : 0), 0)
+  );
+
+  // Génère les coordonnées SVG pour la courbe d'évolution (Ratio/Upload ou Points/Tokens)
+  function buildChartPoints(historyAsc, metric = 'ratio') {
     const slice = historyAsc.slice(-periodDays);
     const pts = slice
-      .map((d) => ({
-        date: d.date,
-        val: d.ratio !== null && Number.isFinite(d.ratio)
-          ? d.ratio
-          : d.uploaded !== null
-          ? Number((d.uploaded / 1024 ** 3).toFixed(2))
-          : null,
-        isUploadFallback: d.ratio === null && d.uploaded !== null
-      }))
+      .map((d) => {
+        if (metric === 'points') {
+          const p = d.seedbonus ?? d.points;
+          return {
+            date: d.date,
+            val: p !== null && p !== undefined && Number.isFinite(p) ? Number(p) : null,
+            isUploadFallback: false,
+            isPoints: true
+          };
+        }
+        return {
+          date: d.date,
+          val:
+            d.ratio !== null && Number.isFinite(d.ratio)
+              ? d.ratio
+              : d.uploaded !== null
+                ? Number((d.uploaded / 1024 ** 3).toFixed(2))
+                : null,
+          isUploadFallback: d.ratio === null && d.uploaded !== null,
+          isPoints: false
+        };
+      })
       .filter((p) => p.val !== null);
 
-    if (pts.length === 0) return { points: [], polyline: '', area: '', min: 0, max: 0, isUploadFallback: false };
+    if (pts.length === 0)
+      return { points: [], polyline: '', area: '', min: 0, max: 0, isUploadFallback: false, isPoints: metric === 'points' };
 
     const W = 540;
     const H = 110;
@@ -140,7 +185,8 @@
       area,
       min,
       max,
-      isUploadFallback: pts[0].isUploadFallback
+      isUploadFallback: pts[0].isUploadFallback,
+      isPoints: metric === 'points'
     };
   }
 </script>
@@ -154,10 +200,10 @@
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
     <div>
       <h1 class="text-2xl font-bold flex items-center gap-2">
-        📈 Statistiques quotidiennes des ratios
+        📈 Statistiques quotidiennes des ratios & points
       </h1>
       <p class="text-sm mt-1" style="color: var(--text-muted);">
-        Suivi jour par jour du ratio, de l'upload, du download, du buffer et des points bonus pour chaque tracker torrent.
+        Suivi jour par jour du ratio, de l'upload, du download, du buffer, des points/jetons/karma/zen et des seeds pour chaque tracker.
       </p>
     </div>
 
@@ -183,37 +229,170 @@
     </div>
   {/if}
 
-  <!-- Filtres : Mode d'affichage, Tracker, Période -->
+  <!-- Bandeau récapitulatif des Points / Jetons / Karma / Zen / Crédits & Seeds -->
+  {#if trackersWithPointsOrSeeds.length > 0}
+    <div
+      class="rounded-2xl p-4 space-y-3"
+      style="background: linear-gradient(135deg, #1e1b4b55 0%, var(--bg-card) 100%); border: 1px solid #4c1d9588;"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style="color: #c4b5fd;">
+          <span>🪙 Points, Jetons, Karma, Zen, Crédits & Seeds — État & variation du jour</span>
+        </div>
+        {#if totalSeeds > 0}
+          <span
+            class="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full"
+            style="background: #052e16; border: 1px solid #166534; color: #4ade80;"
+          >
+            🌱 {totalSeeds.toLocaleString('fr-FR')} torrents en seed au total
+          </span>
+        {/if}
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
+        {#each trackersWithPointsOrSeeds as tr (tr.id)}
+          {@const logoUrl = getTrackerLogo(tr)}
+          {@const pts = tr.points ?? tr.latest?.points ?? tr.latest?.seedbonus ?? null}
+          {@const label = tr.pointsLabel || tr.latest?.pointsLabel || 'POINTS'}
+          {@const pph = tr.pointsPerHour ?? tr.latest?.pointsPerHour ?? null}
+          {@const deltaPts = tr.latest?.deltaSeedbonus ?? null}
+          {@const seeds = tr.seeding ?? tr.latest?.seeding ?? null}
+          {@const badges = tr.extraBadges?.length ? tr.extraBadges : (tr.latest?.extraBadges || [])}
+          <div
+            class="rounded-xl p-2.5 flex flex-col justify-between gap-1.5"
+            style="background: var(--bg-secondary); border: 1px solid var(--border);"
+          >
+            <div class="flex items-center justify-between gap-1.5">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span
+                  class="w-5 h-5 rounded flex items-center justify-center overflow-hidden shrink-0"
+                  style="background: #0b0f19; border: 1px solid var(--border);"
+                >
+                  {#if logoUrl && !failedLogos[tr.id]}
+                    <img
+                      src={logoUrl}
+                      alt={tr.name}
+                      class="w-3.5 h-3.5 object-contain"
+                      onerror={() => {
+                        failedLogos[tr.id] = true;
+                      }}
+                    />
+                  {:else}
+                    <span class="text-[8px] font-bold" style="color: #a78bfa;">
+                      {getTrackerInitials(tr.name)}
+                    </span>
+                  {/if}
+                </span>
+                <span class="text-xs font-bold truncate" style="color: #f8fafc;">{tr.name}</span>
+              </div>
+              <span
+                class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0"
+                style="background: #2e1065; color: #ddd6fe; border: 1px solid #5b21b6;"
+              >
+                {label}
+              </span>
+            </div>
+
+            <div class="flex items-baseline justify-between gap-2">
+              <div class="text-base font-extrabold font-mono" style="color: #facc15;">
+                {pts !== null && pts !== undefined ? fmtPoints(pts) : '—'}
+              </div>
+              <div class="text-right text-[10px] font-mono">
+                {#if deltaPts !== null && deltaPts !== undefined && deltaPts !== 0}
+                  <span
+                    class="font-bold"
+                    style="color: {deltaPts > 0 ? '#4ade80' : '#f87171'};"
+                    title="Variation des points sur la journée"
+                  >
+                    {fmtDeltaPoints(deltaPts)} auj.
+                  </span>
+                {:else if pph !== null && pph !== undefined}
+                  <span style="color: #a78bfa;">+{Number(pph).toFixed(1)}/h</span>
+                {/if}
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-1 pt-1" style="border-top: 1px solid #1e293b;">
+              <div class="flex flex-wrap items-center gap-1">
+                {#if pph !== null && pph !== undefined && deltaPts !== null && deltaPts !== 0}
+                  <span class="text-[9px] font-mono" style="color: #a78bfa;">+{Number(pph).toFixed(1)}/h</span>
+                {/if}
+                {#each badges as b}
+                  <span
+                    class="text-[9px] font-semibold px-1.5 py-0.2 rounded"
+                    style="background: #1e293b; color: #cbd5e1;"
+                  >
+                    {b}
+                  </span>
+                {/each}
+              </div>
+              {#if seeds !== null && seeds !== undefined}
+                <span class="text-[10px] font-mono font-semibold" style="color: #4ade80;" title="Torrents en seed">
+                  🌱 {Number(seeds).toLocaleString('fr-FR')}
+                </span>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
+  <!-- Filtres : Mode d'affichage, Métrique courbe, Tracker, Période -->
   <div
     class="rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3"
     style="background: var(--bg-secondary); border: 1px solid var(--border);"
   >
     <!-- Onglets de vue -->
-    <div class="flex items-center gap-1.5 p-1 rounded-lg" style="background: var(--bg-primary);">
-      <button
-        type="button"
-        onclick={() => (viewMode = 'tracker')}
-        class="px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer"
-        style="background: {viewMode === 'tracker' ? 'var(--accent)' : 'transparent'}; color: {viewMode === 'tracker' ? 'white' : 'var(--text-muted)'};"
-      >
-        📊 Par tracker
-      </button>
-      <button
-        type="button"
-        onclick={() => (viewMode = 'daily')}
-        class="px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer"
-        style="background: {viewMode === 'daily' ? 'var(--accent)' : 'transparent'}; color: {viewMode === 'daily' ? 'white' : 'var(--text-muted)'};"
-      >
-        📅 Journal par jour
-      </button>
-      <button
-        type="button"
-        onclick={() => (viewMode = 'matrix')}
-        class="px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer"
-        style="background: {viewMode === 'matrix' ? 'var(--accent)' : 'transparent'}; color: {viewMode === 'matrix' ? 'white' : 'var(--text-muted)'};"
-      >
-        🧮 Tableau comparatif
-      </button>
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="flex items-center gap-1.5 p-1 rounded-lg" style="background: var(--bg-primary);">
+        <button
+          type="button"
+          onclick={() => (viewMode = 'tracker')}
+          class="px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer"
+          style="background: {viewMode === 'tracker' ? 'var(--accent)' : 'transparent'}; color: {viewMode === 'tracker' ? 'white' : 'var(--text-muted)'};"
+        >
+          📊 Par tracker
+        </button>
+        <button
+          type="button"
+          onclick={() => (viewMode = 'daily')}
+          class="px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer"
+          style="background: {viewMode === 'daily' ? 'var(--accent)' : 'transparent'}; color: {viewMode === 'daily' ? 'white' : 'var(--text-muted)'};"
+        >
+          📅 Journal par jour
+        </button>
+        <button
+          type="button"
+          onclick={() => (viewMode = 'matrix')}
+          class="px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer"
+          style="background: {viewMode === 'matrix' ? 'var(--accent)' : 'transparent'}; color: {viewMode === 'matrix' ? 'white' : 'var(--text-muted)'};"
+        >
+          🧮 Tableau comparatif
+        </button>
+      </div>
+
+      <!-- Sélecteur de métrique pour les courbes et le tableau comparatif -->
+      {#if viewMode === 'tracker' || viewMode === 'matrix'}
+        <div class="flex items-center gap-1 p-1 rounded-lg" style="background: var(--bg-primary);">
+          <button
+            type="button"
+            onclick={() => (chartMetric = 'ratio')}
+            class="px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer"
+            style="background: {chartMetric === 'ratio' ? '#166534' : 'transparent'}; color: {chartMetric === 'ratio' ? '#4ade80' : 'var(--text-muted)'};"
+          >
+            📈 Ratio
+          </button>
+          <button
+            type="button"
+            onclick={() => (chartMetric = 'points')}
+            class="px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer"
+            style="background: {chartMetric === 'points' ? '#713f12' : 'transparent'}; color: {chartMetric === 'points' ? '#facc15' : 'var(--text-muted)'};"
+          >
+            🪙 Points / Jetons
+          </button>
+        </div>
+      {/if}
     </div>
 
     <!-- Sélecteur de tracker + Période -->
@@ -264,8 +443,13 @@
     <div class="space-y-5">
       {#each visibleTrackers as tr (tr.id)}
         {@const logoUrl = getTrackerLogo(tr)}
-        {@const chart = buildChartPoints(tr.historyAsc)}
+        {@const chart = buildChartPoints(tr.historyAsc, chartMetric)}
         {@const rowsDesc = tr.historyDesc.slice(0, periodDays)}
+        {@const ptsLabel = tr.pointsLabel || tr.latest?.pointsLabel || 'Points'}
+        {@const currentPts = tr.points ?? tr.latest?.points ?? tr.latest?.seedbonus ?? null}
+        {@const currentPph = tr.pointsPerHour ?? tr.latest?.pointsPerHour ?? null}
+        {@const currentSeeds = tr.seeding ?? tr.latest?.seeding ?? null}
+        {@const badges = tr.extraBadges?.length ? tr.extraBadges : (tr.latest?.extraBadges || [])}
         <div
           class="rounded-2xl p-5 space-y-4"
           style="background: var(--bg-card); border: 1px solid var(--border);"
@@ -294,7 +478,7 @@
               </div>
 
               <div>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                   <h2 class="text-lg font-bold" style="color: #f8fafc;">{tr.name}</h2>
                   {#if tr.latest?.freeleech}
                     <span
@@ -304,6 +488,14 @@
                       FL ACTIF
                     </span>
                   {/if}
+                  {#each badges as badge}
+                    <span
+                      class="text-[10px] font-semibold px-2 py-0.5 rounded-md"
+                      style="background: #1e1b4b; border: 1px solid #4c1d95; color: #ddd6fe;"
+                    >
+                      {badge}
+                    </span>
+                  {/each}
                 </div>
                 <div class="text-xs" style="color: var(--text-muted);">
                   {tr.historyAsc.length} jour{tr.historyAsc.length > 1 ? 's' : ''} enregistré{tr.historyAsc.length > 1 ? 's' : ''}
@@ -312,8 +504,8 @@
               </div>
             </div>
 
-            <!-- KPIs actuels du jour -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-right">
+            <!-- KPIs actuels du jour (Ratio, Upload, Download, Buffer, Points/Jetons, Seeds) -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-right">
               <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary);">
                 <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
                   Ratio actuel
@@ -375,10 +567,46 @@
                   {fmtDeltaBytes(tr.latest?.deltaBuffer)} auj.
                 </div>
               </div>
+
+              <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary); border: 1px solid #42200688;">
+                <div class="text-[10px] uppercase tracking-wider font-bold" style="color: #facc15;">
+                  🪙 {ptsLabel}
+                </div>
+                <div class="text-sm font-extrabold font-mono" style="color: #fef08a;">
+                  {currentPts !== null && currentPts !== undefined ? fmtPoints(currentPts) : '—'}
+                </div>
+                <div class="text-[11px] font-mono">
+                  {#if tr.latest?.deltaSeedbonus !== null && tr.latest?.deltaSeedbonus !== undefined && tr.latest?.deltaSeedbonus !== 0}
+                    <span style="color: {tr.latest.deltaSeedbonus > 0 ? '#4ade80' : '#f87171'};">
+                      {fmtDeltaPoints(tr.latest.deltaSeedbonus)} auj.
+                    </span>
+                  {:else if currentPph !== null && currentPph !== undefined}
+                    <span style="color: #c4b5fd;">+{Number(currentPph).toFixed(1)}/h</span>
+                  {:else}
+                    <span style="color: var(--text-muted);">—</span>
+                  {/if}
+                </div>
+              </div>
+
+              <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary);">
+                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
+                  🌱 Seeds
+                </div>
+                <div class="text-sm font-bold font-mono" style="color: #4ade80;">
+                  {currentSeeds !== null && currentSeeds !== undefined ? Number(currentSeeds).toLocaleString('fr-FR') : '—'}
+                </div>
+                <div class="text-[11px]" style="color: var(--text-muted);">
+                  {#if currentPph !== null && currentPph !== undefined}
+                    +{Number(currentPph).toFixed(1)} pts/h
+                  {:else}
+                    actifs
+                  {/if}
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Courbe SVG d'évolution -->
+          <!-- Courbe SVG d'évolution (Ratio ou Points selon le sélecteur) -->
           {#if chart.points.length > 0}
             <div
               class="rounded-xl p-3"
@@ -386,17 +614,21 @@
             >
               <div class="flex items-center justify-between text-xs mb-1.5">
                 <span class="font-semibold" style="color: #cbd5e1;">
-                  {chart.isUploadFallback ? 'Évolution Upload (Go)' : 'Évolution du Ratio'} ({chart.points.length} jour{chart.points.length > 1 ? 's' : ''})
+                  {#if chart.isPoints}
+                    🪙 Évolution {ptsLabel} ({chart.points.length} jour{chart.points.length > 1 ? 's' : ''})
+                  {:else}
+                    {chart.isUploadFallback ? 'Évolution Upload (Go)' : '📈 Évolution du Ratio'} ({chart.points.length} jour{chart.points.length > 1 ? 's' : ''})
+                  {/if}
                 </span>
                 <span style="color: var(--text-muted);">
-                  Min : <strong>{chart.min.toFixed(2)}</strong> • Max : <strong>{chart.max.toFixed(2)}</strong>
+                  Min : <strong>{chart.isPoints ? fmtPoints(chart.min) : chart.min.toFixed(2)}</strong> • Max : <strong>{chart.isPoints ? fmtPoints(chart.max) : chart.max.toFixed(2)}</strong>
                 </span>
               </div>
               <svg viewBox="0 0 540 110" class="w-full h-28 overflow-visible">
                 <defs>
                   <linearGradient id="grad-{tr.id}" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.35" />
-                    <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.0" />
+                    <stop offset="0%" stop-color={chart.isPoints ? '#eab308' : '#8b5cf6'} stop-opacity="0.35" />
+                    <stop offset="100%" stop-color={chart.isPoints ? '#eab308' : '#8b5cf6'} stop-opacity="0.0" />
                   </linearGradient>
                 </defs>
                 {#if chart.area}
@@ -405,7 +637,7 @@
                 {#if chart.points.length > 1}
                   <polyline
                     fill="none"
-                    stroke="#a78bfa"
+                    stroke={chart.isPoints ? '#facc15' : '#a78bfa'}
                     stroke-width="2.5"
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -414,8 +646,15 @@
                 {/if}
                 {#each chart.points as pt}
                   <g>
-                    <circle cx={pt.x} cy={pt.y} r="4" fill="#4ade80" stroke="#0f172a" stroke-width="1.5">
-                      <title>{pt.date} : {pt.val}</title>
+                    <circle
+                      cx={pt.x}
+                      cy={pt.y}
+                      r="4"
+                      fill={chart.isPoints ? '#facc15' : '#4ade80'}
+                      stroke="#0f172a"
+                      stroke-width="1.5"
+                    >
+                      <title>{pt.date} : {chart.isPoints ? fmtPoints(pt.val) : pt.val}</title>
                     </circle>
                     {#if chart.points.length <= 14}
                       <text
@@ -426,7 +665,7 @@
                         font-size="9"
                         font-family="monospace"
                       >
-                        {pt.val.toFixed(2)}
+                        {chart.isPoints ? fmtPoints(pt.val) : pt.val.toFixed(2)}
                       </text>
                       <text
                         x={pt.x}
@@ -457,11 +696,14 @@
                   <th class="py-2 px-2.5 font-semibold text-right">Download</th>
                   <th class="py-2 px-2.5 font-semibold text-right">Δ Download / j</th>
                   <th class="py-2 px-2.5 font-semibold text-right">Buffer</th>
-                  <th class="py-2 px-2.5 font-semibold text-right">Points</th>
+                  <th class="py-2 px-2.5 font-semibold text-right" style="color: #facc15;">🪙 {ptsLabel}</th>
+                  <th class="py-2 px-2.5 font-semibold text-right">Δ {ptsLabel} / j</th>
+                  <th class="py-2 px-2.5 font-semibold text-right">🌱 Seeds</th>
                 </tr>
               </thead>
               <tbody>
                 {#each rowsDesc as day (day.date)}
+                  {@const dayPts = day.points ?? day.seedbonus ?? null}
                   <tr
                     class="transition-colors hover:bg-white/[0.02]"
                     style="border-bottom: 1px solid #1e293b;"
@@ -510,9 +752,18 @@
                     >
                       {day.infinite && day.buffer === null ? '∞' : fmtBytes(day.buffer)}
                     </td>
-                    <td class="py-2 px-2.5 text-right font-mono" style="color: #f8fafc;">
-                      {day.seedbonus !== null && day.seedbonus !== undefined
-                        ? Math.round(day.seedbonus).toLocaleString('fr-FR')
+                    <td class="py-2 px-2.5 text-right font-mono font-bold" style="color: #fef08a;">
+                      {dayPts !== null && dayPts !== undefined ? fmtPoints(dayPts) : '—'}
+                    </td>
+                    <td
+                      class="py-2 px-2.5 text-right font-mono"
+                      style="color: {(day.deltaSeedbonus ?? 0) > 0 ? '#4ade80' : (day.deltaSeedbonus ?? 0) < 0 ? '#f87171' : 'var(--text-muted)'};"
+                    >
+                      {fmtDeltaPoints(day.deltaSeedbonus)}
+                    </td>
+                    <td class="py-2 px-2.5 text-right font-mono" style="color: #86efac;">
+                      {day.seeding !== null && day.seeding !== undefined
+                        ? `🌱 ${Number(day.seeding).toLocaleString('fr-FR')}`
                         : '—'}
                     </td>
                   </tr>
@@ -549,7 +800,9 @@
                   <th class="py-2 px-2.5 font-semibold text-right">Δ Upload</th>
                   <th class="py-2 px-2.5 font-semibold text-right">Download</th>
                   <th class="py-2 px-2.5 font-semibold text-right">Buffer</th>
-                  <th class="py-2 px-2.5 font-semibold text-right">Points</th>
+                  <th class="py-2 px-2.5 font-semibold text-right" style="color: #facc15;">🪙 Points / Jetons</th>
+                  <th class="py-2 px-2.5 font-semibold text-right">Δ Points</th>
+                  <th class="py-2 px-2.5 font-semibold text-right">🌱 Seeds</th>
                 </tr>
               </thead>
               <tbody>
@@ -557,6 +810,8 @@
                   {@const day = tr.historyDesc.find((d) => d.date === dateKey)}
                   {@const logoUrl = getTrackerLogo(tr)}
                   {#if day}
+                    {@const dayPts = day.points ?? day.seedbonus ?? null}
+                    {@const unitLabel = day.pointsLabel || tr.pointsLabel || 'PTS'}
                     <tr style="border-bottom: 1px solid #1e293b;">
                       <td class="py-2 px-2.5 font-semibold">
                         <div class="flex items-center gap-2">
@@ -606,8 +861,27 @@
                         {day.infinite && day.buffer === null ? '∞' : fmtBytes(day.buffer)}
                       </td>
                       <td class="py-2 px-2.5 text-right font-mono">
-                        {day.seedbonus !== null && day.seedbonus !== undefined
-                          ? Math.round(day.seedbonus).toLocaleString('fr-FR')
+                        {#if dayPts !== null && dayPts !== undefined}
+                          <span class="font-bold" style="color: #fef08a;">{fmtPoints(dayPts)}</span>
+                          <span
+                            class="ml-1 text-[9px] font-bold px-1 py-0.5 rounded"
+                            style="background: #2e1065; color: #ddd6fe;"
+                          >
+                            {unitLabel}
+                          </span>
+                        {:else}
+                          <span style="color: var(--text-muted);">—</span>
+                        {/if}
+                      </td>
+                      <td
+                        class="py-2 px-2.5 text-right font-mono"
+                        style="color: {(day.deltaSeedbonus ?? 0) > 0 ? '#4ade80' : (day.deltaSeedbonus ?? 0) < 0 ? '#f87171' : 'var(--text-muted)'};"
+                      >
+                        {fmtDeltaPoints(day.deltaSeedbonus)}
+                      </td>
+                      <td class="py-2 px-2.5 text-right font-mono" style="color: #86efac;">
+                        {day.seeding !== null && day.seeding !== undefined
+                          ? `🌱 ${Number(day.seeding).toLocaleString('fr-FR')}`
                           : '—'}
                       </td>
                     </tr>
@@ -630,7 +904,14 @@
           <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
             <th class="py-2.5 px-3 font-semibold">Date</th>
             {#each visibleTrackers as tr (tr.id)}
-              <th class="py-2.5 px-3 font-semibold text-right whitespace-nowrap">{tr.name}</th>
+              <th class="py-2.5 px-3 font-semibold text-right whitespace-nowrap">
+                <div>{tr.name}</div>
+                {#if chartMetric === 'points'}
+                  <div class="text-[9px] font-normal" style="color: #facc15;">
+                    {tr.pointsLabel || 'Points'}
+                  </div>
+                {/if}
+              </th>
             {/each}
           </tr>
         </thead>
@@ -640,18 +921,44 @@
               <td class="py-2.5 px-3 font-medium whitespace-nowrap">{fmtDateFr(dateKey)}</td>
               {#each visibleTrackers as tr (tr.id)}
                 {@const day = tr.historyDesc.find((d) => d.date === dateKey)}
+                {@const dayPts = day ? (day.points ?? day.seedbonus ?? null) : null}
                 <td class="py-2.5 px-3 text-right font-mono">
                   {#if day}
-                    <span class="font-bold" style="color: #4ade80;">
-                      {day.infinite ? '∞' : (day.ratio?.toFixed(2) ?? '—')}
-                    </span>
-                    {#if day.deltaRatio && Math.abs(day.deltaRatio) >= 0.01}
-                      <span
-                        class="ml-1 text-[10px]"
-                        style="color: {day.deltaRatio > 0 ? '#86efac' : '#f87171'};"
-                      >
-                        ({fmtDeltaRatio(day.deltaRatio)})
-                      </span>
+                    {#if chartMetric === 'points'}
+                      {#if dayPts !== null && dayPts !== undefined}
+                        <span class="font-bold" style="color: #fef08a;">
+                          {fmtPoints(dayPts)}
+                        </span>
+                        {#if day.deltaSeedbonus && day.deltaSeedbonus !== 0}
+                          <span
+                            class="ml-1 text-[10px]"
+                            style="color: {day.deltaSeedbonus > 0 ? '#4ade80' : '#f87171'};"
+                          >
+                            ({fmtDeltaPoints(day.deltaSeedbonus)})
+                          </span>
+                        {/if}
+                      {:else}
+                        <span style="color: var(--text-muted);">—</span>
+                      {/if}
+                    {:else}
+                      <div>
+                        <span class="font-bold" style="color: #4ade80;">
+                          {day.infinite ? '∞' : (day.ratio?.toFixed(2) ?? '—')}
+                        </span>
+                        {#if day.deltaRatio && Math.abs(day.deltaRatio) >= 0.01}
+                          <span
+                            class="ml-1 text-[10px]"
+                            style="color: {day.deltaRatio > 0 ? '#86efac' : '#f87171'};"
+                          >
+                            ({fmtDeltaRatio(day.deltaRatio)})
+                          </span>
+                        {/if}
+                      </div>
+                      {#if dayPts !== null && dayPts !== undefined}
+                        <div class="text-[10px]" style="color: #facc15;">
+                          🪙 {fmtPoints(dayPts)}
+                        </div>
+                      {/if}
                     {/if}
                   {:else}
                     <span style="color: var(--text-muted);">—</span>

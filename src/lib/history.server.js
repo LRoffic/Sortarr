@@ -87,6 +87,22 @@ export function recordDailyStats(enrichedIndexers, date = new Date()) {
     const buffer = typeof t.buffer === 'number' && Number.isFinite(t.buffer) ? t.buffer : null;
     const rawPts = t.points ?? t.seedbonus;
     const seedbonus = typeof rawPts === 'number' && Number.isFinite(rawPts) ? rawPts : null;
+    const pointsLabel = t.pointsLabel || existing?.pointsLabel || 'POINTS';
+    const pointsPerHour = typeof t.pointsPerHour === 'number' && Number.isFinite(t.pointsPerHour)
+      ? t.pointsPerHour
+      : (existing?.pointsPerHour ?? null);
+    const flTokens = typeof t.flTokens === 'number' && Number.isFinite(t.flTokens)
+      ? t.flTokens
+      : (existing?.flTokens ?? null);
+    const seeding = typeof t.seeding === 'number' && Number.isFinite(t.seeding)
+      ? t.seeding
+      : (existing?.seeding ?? null);
+    const leeching = typeof t.leeching === 'number' && Number.isFinite(t.leeching)
+      ? t.leeching
+      : (existing?.leeching ?? null);
+    const extraBadges = Array.isArray(t.extraBadges) && t.extraBadges.length > 0
+      ? t.extraBadges
+      : (existing?.extraBadges ?? []);
 
     days[todayKey] = {
       date: todayKey,
@@ -97,6 +113,13 @@ export function recordDailyStats(enrichedIndexers, date = new Date()) {
       downloaded,
       buffer,
       seedbonus,
+      points: seedbonus,
+      pointsLabel,
+      pointsPerHour,
+      flTokens,
+      seeding,
+      leeching,
+      extraBadges,
       freeleech: !!t.freeleech,
       startRatio: existing?.startRatio !== undefined ? existing.startRatio : ratio,
       startUploaded: existing?.startUploaded !== undefined ? existing.startUploaded : uploaded,
@@ -136,6 +159,7 @@ export function getFormattedStatsHistory(currentIndexers = []) {
 
   for (const [idKey, entry] of Object.entries(store.trackers)) {
     const currentIdx = currentMap.get(idKey);
+    const liveTracker = currentIdx?.tracker && !currentIdx.tracker.error ? currentIdx.tracker : null;
     const name = currentIdx?.name || entry.name || `Tracker #${idKey}`;
     const definitionName = currentIdx?.definitionName || entry.definitionName || '';
     const sortedDates = Object.keys(entry.days || {}).sort(); // ordre chronologique croissant
@@ -148,13 +172,16 @@ export function getFormattedStatsHistory(currentIndexers = []) {
       allDatesSet.add(dKey);
       const cur = entry.days[dKey];
       const prev = i > 0 ? entry.days[sortedDates[i - 1]] : null;
+      const isLastDay = i === sortedDates.length - 1;
+
+      const curBonus = cur.seedbonus ?? cur.points ?? (isLastDay ? (liveTracker?.points ?? null) : null);
 
       // Si pas de jour précédent, utilise la valeur de début de journée (intraday)
       const baseRatio = prev ? prev.ratio : cur.startRatio;
       const baseUp = prev ? prev.uploaded : cur.startUploaded;
       const baseDown = prev ? prev.downloaded : cur.startDownloaded;
       const baseBuf = prev ? prev.buffer : cur.startBuffer;
-      const baseBonus = prev ? prev.seedbonus : cur.startSeedbonus;
+      const baseBonus = prev ? (prev.seedbonus ?? prev.points) : cur.startSeedbonus;
 
       const deltaRatio =
         cur.ratio !== null && baseRatio !== null && baseRatio !== undefined
@@ -173,12 +200,22 @@ export function getFormattedStatsHistory(currentIndexers = []) {
           ? cur.buffer - baseBuf
           : null;
       const deltaSeedbonus =
-        cur.seedbonus !== null && baseBonus !== null && baseBonus !== undefined
-          ? Number((cur.seedbonus - baseBonus).toFixed(2))
+        curBonus !== null && baseBonus !== null && baseBonus !== undefined
+          ? Number((curBonus - baseBonus).toFixed(2))
           : null;
 
       historyAsc.push({
         ...cur,
+        seedbonus: curBonus,
+        points: curBonus,
+        pointsLabel: cur.pointsLabel || liveTracker?.pointsLabel || 'POINTS',
+        pointsPerHour: cur.pointsPerHour ?? (isLastDay ? (liveTracker?.pointsPerHour ?? null) : null),
+        flTokens: cur.flTokens ?? (isLastDay ? (liveTracker?.flTokens ?? null) : null),
+        seeding: cur.seeding ?? (isLastDay ? (liveTracker?.seeding ?? null) : null),
+        leeching: cur.leeching ?? (isLastDay ? (liveTracker?.leeching ?? null) : null),
+        extraBadges: (Array.isArray(cur.extraBadges) && cur.extraBadges.length > 0)
+          ? cur.extraBadges
+          : (isLastDay && Array.isArray(liveTracker?.extraBadges) ? liveTracker.extraBadges : []),
         deltaRatio,
         deltaUploaded,
         deltaDownloaded,
@@ -192,6 +229,7 @@ export function getFormattedStatsHistory(currentIndexers = []) {
       id: entry.id ?? Number(idKey),
       name,
       definitionName,
+      pointsLabel: latest?.pointsLabel || liveTracker?.pointsLabel || 'POINTS',
       latest,
       historyAsc,
       historyDesc: [...historyAsc].reverse()
