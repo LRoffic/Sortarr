@@ -57,6 +57,27 @@
   let isTesting = $state(false);
   let testResult = $state(null);
 
+  let isTestingApiRatio = $state(false);
+  let apiRatioTestResult = $state(null);
+
+  async function testApiRatio() {
+    if (!apiRatioUrl || !apiRatioUrl.trim()) return;
+    isTestingApiRatio = true;
+    apiRatioTestResult = null;
+    try {
+      const res = await fetch('/api/test-api-ratio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiRatioUrl: apiRatioUrl.trim() })
+      });
+      apiRatioTestResult = await res.json();
+    } catch (e) {
+      apiRatioTestResult = { ok: false, error: e.message };
+    } finally {
+      isTestingApiRatio = false;
+    }
+  }
+
   let isSaving = $state(false);
   let saveResult = $state(null);
 
@@ -466,6 +487,43 @@
       <p class="text-xs mt-1" style="color: var(--text-muted);">
         Trouvez votre clé dans Prowlarr → Settings → General → Security → API Key
       </p>
+
+      <!-- Bouton de test de connexion Prowlarr remonté sous l'input -->
+      <div class="mt-3 flex items-center gap-3">
+        <button
+          type="button"
+          onclick={testConnection}
+          disabled={isTesting || !prowlarrUrl || !prowlarrApiKey}
+          class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer flex items-center gap-2"
+          style="background: {isTesting ? 'var(--bg-secondary)' : '#7c3aed22'}; border: 1px solid {isTesting ? 'var(--border)' : '#7c3aed66'}; color: {isTesting ? 'var(--text-muted)' : '#c4b5fd'};"
+        >
+          {isTesting ? '⏳ Test en cours...' : '🔌 Tester la connexion Prowlarr'}
+        </button>
+      </div>
+
+      <!-- Résultat en direct du test Prowlarr -->
+      {#if testResult}
+        <div
+          class="rounded-xl p-3.5 mt-3 text-sm flex items-center justify-between gap-2"
+          style="background: {testResult.ok ? '#22c55e22' : '#ef444422'}; border: 1px solid {testResult.ok ? '#22c55e' : '#ef4444'}; color: {testResult.ok ? '#4ade80' : '#f87171'};"
+        >
+          <div>
+            {#if testResult.ok}
+              ✅ Connexion réussie à Prowlarr — version {testResult.version}
+            {:else}
+              ❌ Échec de la connexion : {testResult.error}
+            {/if}
+          </div>
+          <button
+            type="button"
+            onclick={() => (testResult = null)}
+            class="text-xs opacity-70 hover:opacity-100 cursor-pointer px-1"
+            title="Masquer le message"
+          >
+            ✕
+          </button>
+        </div>
+      {/if}
     </div>
 
     <!-- ── Auto-tri automatique ── -->
@@ -689,14 +747,62 @@
         <p class="text-xs" style="color: var(--text-muted);">Sauvegardez d'abord l'URL et la clé API Prowlarr, puis rechargez la page.</p>
       {/if}
 
-      <div class="mb-3 p-3 rounded-lg" style="background: var(--bg-card); border: 1px solid var(--border);">
-        <label class="block text-xs font-semibold mb-1" for="apiRatioUrl">
+      <div class="mb-3 p-3.5 rounded-xl space-y-2.5" style="background: var(--bg-card); border: 1px solid var(--border);">
+        <label class="block text-xs font-semibold" for="apiRatioUrl">
           🐳 URL du service <code>api-ratio</code> (optionnel — <a href="https://github.com/kreezx/api-ratio" target="_blank" class="underline" style="color: #a78bfa;">kreezx/api-ratio</a>)
         </label>
-        <input id="apiRatioUrl" type="text" bind:value={apiRatioUrl} placeholder="http://localhost:8679"
-               class="w-full px-3 py-1.5 rounded text-xs font-mono"
-               style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
-        <p class="text-xs mt-1" style="color: var(--text-muted);">
+        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <input
+            id="apiRatioUrl"
+            type="text"
+            bind:value={apiRatioUrl}
+            placeholder="http://localhost:8679"
+            class="flex-1 min-w-[200px] px-3 py-2 rounded-lg text-xs font-mono"
+            style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;"
+          />
+          <button
+            type="button"
+            onclick={testApiRatio}
+            disabled={isTestingApiRatio || !apiRatioUrl.trim()}
+            class="px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 shrink-0"
+            style="background: {isTestingApiRatio ? 'var(--bg-secondary)' : '#0284c722'}; border: 1px solid {isTestingApiRatio ? 'var(--border)' : '#0284c766'}; color: {isTestingApiRatio ? 'var(--text-muted)' : '#7dd3fc'};"
+          >
+            {isTestingApiRatio ? '⏳ Test en cours...' : '🔌 Valider l\'URL api-ratio'}
+          </button>
+        </div>
+
+        {#if apiRatioTestResult}
+          <div
+            class="rounded-lg p-3 text-xs flex items-start justify-between gap-2"
+            style="background: {apiRatioTestResult.ok ? '#22c55e22' : '#ef444422'}; border: 1px solid {apiRatioTestResult.ok ? '#22c55e' : '#ef4444'}; color: {apiRatioTestResult.ok ? '#4ade80' : '#f87171'};"
+          >
+            <div>
+              {#if apiRatioTestResult.ok}
+                <div>
+                  ✅ Connexion réussie à <strong>api-ratio</strong> ({apiRatioTestResult.url})
+                </div>
+                <div class="mt-1 text-[11px]" style="color: #86efac;">
+                  {apiRatioTestResult.count} tracker{apiRatioTestResult.count > 1 ? 's' : ''} disponible{apiRatioTestResult.count > 1 ? 's' : ''} :
+                  <span class="font-mono font-bold text-white ml-1">
+                    {apiRatioTestResult.trackers?.join(', ') || 'aucun tracker retourné'}
+                  </span>
+                </div>
+              {:else}
+                <div>❌ Impossible de contacter api-ratio : {apiRatioTestResult.error}</div>
+              {/if}
+            </div>
+            <button
+              type="button"
+              onclick={() => (apiRatioTestResult = null)}
+              class="text-xs opacity-70 hover:opacity-100 cursor-pointer px-1 shrink-0"
+              title="Masquer le message"
+            >
+              ✕
+            </button>
+          </div>
+        {/if}
+
+        <p class="text-xs" style="color: var(--text-muted);">
           Centralise C411, TR4KER, Gemini/G3MINI, Crazy Spirits, Nostradamus, La Cale, Memphis, The Old School, Generation Free, HD-Space, NEXUM, Redacted via <code>GET /ratios</code>. N'expose pas le freeleech (réglez-le manuellement ci-dessous).
         </p>
       </div>
@@ -835,37 +941,17 @@
     </div>
 
     <!-- Action buttons -->
-    <div class="flex gap-3 pt-2">
-      <button
-        type="button"
-        onclick={testConnection}
-        disabled={isTesting || !prowlarrUrl || !prowlarrApiKey}
-        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        style="background: var(--bg-card); border: 1px solid var(--border); color: {isTesting ? 'var(--text-muted)' : '#e2e8f0'};">
-        {isTesting ? '⏳ Test...' : '🔌 Tester la connexion'}
-      </button>
-
+    <div class="pt-2">
       <button
         type="submit"
         disabled={isSaving}
-        class="flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-        style="background: var(--accent); color: white; opacity: {isSaving ? 0.6 : 1};">
-        {isSaving ? '⏳ Sauvegarde...' : '💾 Sauvegarder'}
+        class="w-full px-6 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer shadow-lg"
+        style="background: var(--accent); color: white; opacity: {isSaving ? 0.6 : 1};"
+      >
+        {isSaving ? '⏳ Sauvegarde en cours...' : '💾 Sauvegarder les paramètres'}
       </button>
     </div>
   </form>
-
-  <!-- Live test result -->
-  {#if testResult}
-    <div class="rounded-xl p-4 mt-4 text-sm"
-         style="background: {testResult.ok ? '#22c55e22' : '#ef444422'}; border: 1px solid {testResult.ok ? '#22c55e' : '#ef4444'}; color: {testResult.ok ? '#4ade80' : '#f87171'};">
-      {#if testResult.ok}
-        ✅ Connexion réussie — Prowlarr version {testResult.version}
-      {:else}
-        ❌ Connexion échouée: {testResult.error}
-      {/if}
-    </div>
-  {/if}
 
   <!-- Last auto-sort info -->
 

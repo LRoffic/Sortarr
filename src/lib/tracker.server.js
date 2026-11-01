@@ -1201,6 +1201,29 @@ export async function fetchCustomStats(cfg, apiKey) {
  */
 let apiRatioCache = { url: '', at: 0, data: null };
 
+export async function testApiRatioConnection(apiRatioUrl) {
+  try {
+    const base = String(apiRatioUrl || '').trim().replace(/\/+$/, '').replace(/\/ratios$/, '');
+    if (!base) throw new Error('URL du service api-ratio requise');
+    const data = await fetchJson(`${base}/ratios`, {});
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error('Réponse invalide reçue de /ratios (objet JSON attendu)');
+    }
+    const trackers = Object.keys(data);
+    return {
+      ok: true,
+      url: base,
+      count: trackers.length,
+      trackers
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err.message
+    };
+  }
+}
+
 async function getApiRatioData(apiRatioUrl) {
   const base = String(apiRatioUrl || '').trim().replace(/\/+$/, '').replace(/\/ratios$/, '');
   if (!base) throw new Error('URL du service api-ratio non configurée (ex. http://localhost:8679)');
