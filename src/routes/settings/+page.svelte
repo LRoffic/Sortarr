@@ -112,7 +112,20 @@
     isSyncingTags = true;
     syncTagsResult = null;
     try {
-      const res = await fetch('/api/sync-tags', { method: 'POST' });
+      const res = await fetch('/api/sync-tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taggingEnabled,
+          taggingTag,
+          taggingRatioThreshold,
+          taggingExcludeFreeleech,
+          radarrUrl,
+          radarrApiKey,
+          sonarrUrl,
+          sonarrApiKey
+        })
+      });
       syncTagsResult = await res.json();
     } catch (e) {
       syncTagsResult = { ok: false, error: e.message };

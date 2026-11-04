@@ -1,4 +1,4 @@
-import { getConfig } from './config.server.js';
+import { getConfig, saveConfig } from './config.server.js';
 import { fetchIndexers, updateIndexerPriority } from './prowlarr.server.js';
 import { getEnrichedIndexers } from './indexers.server.js';
 
@@ -149,8 +149,31 @@ export function shouldTagIndexer(idx, config) {
 /**
  * Synchronise les tags sur Prowlarr, Radarr et Sonarr.
  */
-export async function syncAllTags(customEnriched = null) {
-  const config = getConfig();
+export async function syncAllTags(customEnriched = null, overrideConfig = null) {
+  let config = getConfig();
+  if (overrideConfig && typeof overrideConfig === 'object') {
+    config = {
+      ...config,
+      taggingEnabled: overrideConfig.taggingEnabled !== undefined ? !!overrideConfig.taggingEnabled : config.taggingEnabled,
+      taggingTag: overrideConfig.taggingTag ? String(overrideConfig.taggingTag).trim() : config.taggingTag,
+      taggingRatioThreshold: overrideConfig.taggingRatioThreshold !== undefined
+        ? (typeof overrideConfig.taggingRatioThreshold === 'number'
+            ? overrideConfig.taggingRatioThreshold
+            : parseFloat(overrideConfig.taggingRatioThreshold) || 1.0)
+        : config.taggingRatioThreshold,
+      taggingExcludeFreeleech: overrideConfig.taggingExcludeFreeleech !== undefined
+        ? !!overrideConfig.taggingExcludeFreeleech
+        : config.taggingExcludeFreeleech,
+      radarrUrl: overrideConfig.radarrUrl !== undefined ? String(overrideConfig.radarrUrl).trim().replace(/\/+$/, '') : config.radarrUrl,
+      radarrApiKey: overrideConfig.radarrApiKey !== undefined ? String(overrideConfig.radarrApiKey).trim() : config.radarrApiKey,
+      sonarrUrl: overrideConfig.sonarrUrl !== undefined ? String(overrideConfig.sonarrUrl).trim().replace(/\/+$/, '') : config.sonarrUrl,
+      sonarrApiKey: overrideConfig.sonarrApiKey !== undefined ? String(overrideConfig.sonarrApiKey).trim() : config.sonarrApiKey
+    };
+    try {
+      saveConfig(config);
+    } catch {}
+  }
+
   if (!config.taggingEnabled) {
     return { ok: false, reason: 'Marquage par tag désactivé dans les paramètres' };
   }
