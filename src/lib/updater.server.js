@@ -306,9 +306,12 @@ export async function performUpdate() {
   } catch {}
 
   // Installation des dépendances et build de production
-  log('Installation des dépendances (npm install)...');
-  const { stdout: npmOut } = await execAsync('npm install --no-audit --no-fund', {
+  // Note: On force --include=dev et NODE_ENV=development pour s'assurer que les outils
+  // de compilation (Vite, Tailwind, etc.) sont bien installés même si le serveur tourne en NODE_ENV=production.
+  log('Installation des dépendances (npm install --include=dev)...');
+  const { stdout: npmOut } = await execAsync('npm install --include=dev --no-audit --no-fund', {
     cwd: rootDir,
+    env: { ...process.env, NODE_ENV: 'development' },
     timeout: 180000
   });
   log('Dépendances à jour', npmOut.trim().slice(-400));
@@ -316,6 +319,7 @@ export async function performUpdate() {
   log('Compilation de la nouvelle version (npm run build)...');
   const { stdout: buildOut } = await execAsync('npm run build', {
     cwd: rootDir,
+    env: { ...process.env, NODE_ENV: 'production' },
     timeout: 180000
   });
   log('Build terminé avec succès', buildOut.trim().slice(-400));

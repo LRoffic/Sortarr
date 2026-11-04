@@ -1,6 +1,6 @@
 {
   "name": "sortarr",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "scripts": {
     "dev": "vite dev",
@@ -11,14 +11,13 @@
   "dependencies": {
     "@sveltejs/adapter-node": "^5.2.9",
     "@sveltejs/kit": "^2.9.0",
-    "svelte": "^5.0.0",
-    "svelte-dnd-action": "^0.9.46"
-  },
-  "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@tailwindcss/vite": "^4.0.0",
+    "svelte": "^5.0.0",
+    "svelte-dnd-action": "^0.9.46",
     "tailwindcss": "^4.0.0",
     "vite": "^6.0.0"
   },
+  "devDependencies": {},
   "type": "module"
 }
