@@ -21,6 +21,20 @@ export async function fetchIndexerStats(prowlarrUrl, apiKey) {
   return res.json();
 }
 
+export async function fetchTags(prowlarrUrl, apiKey) {
+  const url = `${prowlarrUrl}/api/v1/tag`;
+  try {
+    const res = await fetch(url, {
+      headers: { 'X-Api-Key': apiKey, 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
 export async function updateIndexerPriority(prowlarrUrl, apiKey, indexer) {
   const url = `${prowlarrUrl}/api/v1/indexer/${indexer.id}`;
   const res = await fetch(url, {

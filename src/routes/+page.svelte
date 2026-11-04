@@ -417,6 +417,14 @@
                 </span>
               {/if}
 
+              {#if indexer.hasNoArrTag}
+                <span class="px-1.5 py-0.5 rounded text-xs font-bold flex-shrink-0 cursor-help flex items-center gap-1"
+                      title={`Tag "${indexer.taggingTag || 'no-arr'}" actif dans Prowlarr : exclu des téléchargements automatiques Radarr et Sonarr`}
+                      style="background: #ef444422; color: #f87171; border: 1px solid #ef444455;">
+                  🏷️ {indexer.taggingTag || 'no-arr'}
+                </span>
+              {/if}
+
               <span class="px-1.5 py-0.5 rounded text-xs flex-shrink-0"
                     style="background: {indexer.privacy === 'private' ? '#7c3aed22' : indexer.privacy === 'semiPrivate' ? '#f9731622' : '#22c55e22'}; 
                            color: {indexer.privacy === 'private' ? '#a78bfa' : indexer.privacy === 'semiPrivate' ? '#fb923c' : '#4ade80'};
