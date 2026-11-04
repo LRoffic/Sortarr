@@ -17,6 +17,17 @@ export async function POST({ request }) {
   const autoSortEnabled = body.autoSortEnabled === true;
   const autoSortInterval = Math.max(5, parseInt(body.autoSortInterval) || 20);
 
+  const taggingEnabled = body.taggingEnabled === true;
+  const taggingTag = String(body.taggingTag ?? 'no-arr').trim() || 'no-arr';
+  const taggingRatioThreshold = typeof body.taggingRatioThreshold === 'number'
+    ? body.taggingRatioThreshold
+    : parseFloat(body.taggingRatioThreshold) || 1.0;
+  const taggingExcludeFreeleech = body.taggingExcludeFreeleech !== false;
+  const radarrUrl = String(body.radarrUrl ?? '').trim().replace(/\/+$/, '');
+  const radarrApiKey = String(body.radarrApiKey ?? '').trim();
+  const sonarrUrl = String(body.sonarrUrl ?? '').trim().replace(/\/+$/, '');
+  const sonarrApiKey = String(body.sonarrApiKey ?? '').trim();
+
   if (!prowlarrUrl) return json({ ok: false, error: "L'URL Prowlarr est requise" }, { status: 400 });
   if (!/^https?:\/\//i.test(prowlarrUrl)) {
     return json({ ok: false, error: "L'URL doit commencer par http:// ou https://" }, { status: 400 });
@@ -49,7 +60,23 @@ export async function POST({ request }) {
         manualDownGB: t.manualDownGB ?? ''
       };
     }
-    saveConfig({ prowlarrUrl, prowlarrApiKey, autoRefreshInterval, autoSortEnabled, autoSortInterval, trackers, apiRatioUrl: String(body.apiRatioUrl ?? '').trim().replace(/\/+$/, '') });
+    saveConfig({
+      prowlarrUrl,
+      prowlarrApiKey,
+      autoRefreshInterval,
+      autoSortEnabled,
+      autoSortInterval,
+      taggingEnabled,
+      taggingTag,
+      taggingRatioThreshold,
+      taggingExcludeFreeleech,
+      radarrUrl,
+      radarrApiKey,
+      sonarrUrl,
+      sonarrApiKey,
+      trackers,
+      apiRatioUrl: String(body.apiRatioUrl ?? '').trim().replace(/\/+$/, '')
+    });
   } catch (e) {
     return json({ ok: false, error: `Écriture de la configuration impossible : ${e.message}` }, { status: 500 });
   }

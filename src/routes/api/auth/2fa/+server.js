@@ -47,7 +47,7 @@ export async function POST({ request, locals }) {
     }
 
     if (action === 'save-recaptcha') {
-      saveRecaptchaSettings(body.siteKey, body.secretKey);
+      saveRecaptchaSettings(body.siteKey, body.secretKey, body.captchaDisabled);
       return json({
         ok: true,
         security: getSecuritySettings(locals.user.username)

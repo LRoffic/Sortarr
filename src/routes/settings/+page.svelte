@@ -54,6 +54,72 @@
   let autoSortEnabled = $state(untrack(() => !!(data.config.autoSortEnabled)));
   let autoSortInterval = $state(untrack(() => data.config.autoSortInterval ?? 20));
   let apiRatioUrl = $state(untrack(() => data.config.apiRatioUrl ?? ''));
+
+  // Marquage automatique par tag selon le ratio (Radarr / Sonarr / cross-seed)
+  let taggingEnabled = $state(untrack(() => !!(data.config.taggingEnabled)));
+  let taggingTag = $state(untrack(() => data.config.taggingTag ?? 'no-arr'));
+  let taggingRatioThreshold = $state(untrack(() => data.config.taggingRatioThreshold ?? 1.0));
+  let taggingExcludeFreeleech = $state(untrack(() => data.config.taggingExcludeFreeleech !== false));
+  let radarrUrl = $state(untrack(() => data.config.radarrUrl ?? ''));
+  let radarrApiKey = $state(untrack(() => data.config.radarrApiKey ?? ''));
+  let sonarrUrl = $state(untrack(() => data.config.sonarrUrl ?? ''));
+  let sonarrApiKey = $state(untrack(() => data.config.sonarrApiKey ?? ''));
+
+  let isTestingRadarr = $state(false);
+  let radarrTestResult = $state(null);
+  let isTestingSonarr = $state(false);
+  let sonarrTestResult = $state(null);
+  let isSyncingTags = $state(false);
+  let syncTagsResult = $state(null);
+
+  async function testRadarr() {
+    if (!radarrUrl || !radarrApiKey) return;
+    isTestingRadarr = true;
+    radarrTestResult = null;
+    try {
+      const res = await fetch('/api/test-arr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: radarrUrl.trim(), apiKey: radarrApiKey.trim(), type: 'radarr' })
+      });
+      radarrTestResult = await res.json();
+    } catch (e) {
+      radarrTestResult = { ok: false, error: e.message };
+    } finally {
+      isTestingRadarr = false;
+    }
+  }
+
+  async function testSonarr() {
+    if (!sonarrUrl || !sonarrApiKey) return;
+    isTestingSonarr = true;
+    sonarrTestResult = null;
+    try {
+      const res = await fetch('/api/test-arr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: sonarrUrl.trim(), apiKey: sonarrApiKey.trim(), type: 'sonarr' })
+      });
+      sonarrTestResult = await res.json();
+    } catch (e) {
+      sonarrTestResult = { ok: false, error: e.message };
+    } finally {
+      isTestingSonarr = false;
+    }
+  }
+
+  async function syncTagsNow() {
+    isSyncingTags = true;
+    syncTagsResult = null;
+    try {
+      const res = await fetch('/api/sync-tags', { method: 'POST' });
+      syncTagsResult = await res.json();
+    } catch (e) {
+      syncTagsResult = { ok: false, error: e.message };
+    } finally {
+      isSyncingTags = false;
+    }
+  }
   let isTesting = $state(false);
   let testResult = $state(null);
 
@@ -86,6 +152,7 @@
   let backupCodesRemaining = $state(untrack(() => data.security?.backupCodesRemaining ?? 0));
   let recaptchaSiteKey = $state(untrack(() => data.security?.recaptchaSiteKey ?? ''));
   let recaptchaSecretKey = $state(untrack(() => (data.security?.recaptchaSecretKeySet ? '••••••••' : '')));
+  let captchaDisabled = $state(untrack(() => !!(data.security?.captchaDisabled)));
   let setupTotpSecret = $state('');
   let setupOtpauthUri = $state('');
   let confirmTotpCode = $state('');
@@ -203,14 +270,17 @@
         body: JSON.stringify({
           action: 'save-recaptcha',
           siteKey: recaptchaSiteKey,
-          secretKey: recaptchaSecretKey
+          secretKey: recaptchaSecretKey,
+          captchaDisabled
         })
       });
       const r = await res.json();
       if (!r.ok) throw new Error(r.error);
       secMsg = {
         ok: true,
-        text: recaptchaSiteKey.trim()
+        text: captchaDisabled
+          ? 'Captcha totalement désactivé (accès direct sans captcha sur la page de connexion).'
+          : recaptchaSiteKey.trim()
           ? 'Clés Google reCAPTCHA v2 enregistrées.'
           : 'Captcha visuel intégré Sortarr actif sur la page de connexion.'
       };
@@ -391,6 +461,14 @@
           autoSortEnabled,
           autoSortInterval,
           apiRatioUrl,
+          taggingEnabled,
+          taggingTag,
+          taggingRatioThreshold,
+          taggingExcludeFreeleech,
+          radarrUrl,
+          radarrApiKey,
+          sonarrUrl,
+          sonarrApiKey,
           trackers: $state.snapshot(trackers)
         })
       });
@@ -569,6 +647,278 @@
           <p class="text-xs mt-2" style="color: var(--text-muted);">
             ⚠️ Nécessite que Sortarr soit démarré (node build/index.js). Le planificateur tourne côté serveur.
           </p>
+        </div>
+      {/if}
+    </div>
+
+    <!-- ── Marquage par Tag selon le ratio (Radarr / Sonarr / cross-seed) ── -->
+    <div class="rounded-xl p-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="text-sm font-semibold flex items-center gap-2">
+            🏷️ Protection du ratio par Tag (Radarr / Sonarr / Cross-seed)
+          </div>
+          <div class="text-xs mt-0.5" style="color: var(--text-muted);">
+            Ajoute un tag d'exclusion aux indexeurs dont le ratio est inférieur à votre seuil. Radarr et Sonarr ne lanceront plus de téléchargements automatiques sur ces trackers, préservant votre ratio pour le seeding et cross-seed.
+          </div>
+        </div>
+        <!-- Toggle switch -->
+        <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+          <input type="checkbox" name="taggingEnabled" bind:checked={taggingEnabled} class="sr-only peer" />
+          <div class="w-11 h-6 rounded-full peer transition-colors"
+               style="background: {taggingEnabled ? 'var(--accent)' : 'var(--border)'};">
+            <div class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
+                 style="transform: translateX({taggingEnabled ? '20px' : '0px'});"></div>
+          </div>
+        </label>
+      </div>
+
+      {#if taggingEnabled}
+        <div class="mt-4 pt-4 space-y-4" style="border-top: 1px solid var(--border);">
+          <!-- Paramètres du tag et seuil -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold mb-1.5" for="taggingTag">
+                🏷️ Nom du tag Prowlarr / *Arr
+              </label>
+              <input
+                id="taggingTag"
+                name="taggingTag"
+                type="text"
+                bind:value={taggingTag}
+                placeholder="no-arr"
+                class="w-full px-3 py-2 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
+                style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+              />
+              <p class="text-[11px] mt-1" style="color: var(--text-muted);">
+                Par défaut <code>no-arr</code>. Dans Radarr/Sonarr, un indexeur avec un tag n'est utilisé que pour les médias avec ce même tag.
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold mb-1.5" for="taggingRatioThreshold">
+                🎯 Seuil de ratio minimum
+              </label>
+              <input
+                id="taggingRatioThreshold"
+                name="taggingRatioThreshold"
+                type="number"
+                step="0.05"
+                min="0"
+                bind:value={taggingRatioThreshold}
+                placeholder="1.0"
+                class="w-full px-3 py-2 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
+                style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+              />
+              <p class="text-[11px] mt-1" style="color: var(--text-muted);">
+                Par défaut <code>1.0</code>. Si le ratio réel du tracker est &lt; seuil, le tag est ajouté. Dès qu'il repasse &ge; seuil, le tag est retiré.
+              </p>
+            </div>
+          </div>
+
+          <!-- Exemption Freeleech -->
+          <div class="rounded-lg p-3" style="background: var(--bg-card); border: 1px solid var(--border);">
+            <label class="flex items-center gap-3 cursor-pointer select-none text-xs">
+              <input
+                type="checkbox"
+                bind:checked={taggingExcludeFreeleech}
+                class="w-4 h-4 rounded accent-purple-600 cursor-pointer"
+              />
+              <div>
+                <span class="font-semibold text-emerald-400">⚡ Exempter les trackers en Freeleech (FL)</span>
+                <div class="text-[11px] mt-0.5" style="color: var(--text-muted);">
+                  Ne pas appliquer le tag si le tracker est actuellement en Freeleech (les téléchargements ne consomment pas de download et ne dégradent pas le ratio).
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Association directe Radarr & Sonarr -->
+          <div class="rounded-xl p-3.5 space-y-3" style="background: var(--bg-card); border: 1px solid var(--border);">
+            <div>
+              <div class="text-xs font-semibold flex items-center gap-1.5">
+                🔗 Association directe avec Radarr et Sonarr (optionnel)
+              </div>
+              <div class="text-[11px] mt-0.5" style="color: var(--text-muted);">
+                Renseignez les URLs et clés API de Radarr et Sonarr pour que Sortarr synchronise directement le tag sur leurs indexeurs respectifs.
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Radarr -->
+              <div class="p-3 rounded-lg space-y-2.5" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                    🎬 Radarr
+                  </span>
+                  {#if radarrTestResult}
+                    <span class="text-[11px] px-2 py-0.5 rounded font-medium"
+                          style="background: {radarrTestResult.ok ? '#22c55e22' : '#ef444422'}; color: {radarrTestResult.ok ? '#4ade80' : '#f87171'};">
+                      {radarrTestResult.ok ? `Connecté (v${radarrTestResult.version})` : 'Échec connexion'}
+                    </span>
+                  {/if}
+                </div>
+                <div>
+                  <label class="block text-[11px] mb-1" for="radarrUrl" style="color: var(--text-muted);">URL Radarr</label>
+                  <input
+                    id="radarrUrl"
+                    type="text"
+                    bind:value={radarrUrl}
+                    placeholder="http://localhost:7878"
+                    class="w-full px-2.5 py-1.5 rounded text-xs font-mono"
+                    style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[11px] mb-1" for="radarrApiKey" style="color: var(--text-muted);">Clé API Radarr</label>
+                  <input
+                    id="radarrApiKey"
+                    type="text"
+                    bind:value={radarrApiKey}
+                    placeholder="Clé API Radarr"
+                    class="w-full px-2.5 py-1.5 rounded text-xs font-mono"
+                    style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onclick={testRadarr}
+                  disabled={isTestingRadarr || !radarrUrl || !radarrApiKey}
+                  class="w-full py-1.5 rounded text-xs font-semibold cursor-pointer transition-colors"
+                  style="background: #f59e0b22; border: 1px solid #f59e0b55; color: #fbbf24;"
+                >
+                  {isTestingRadarr ? '⏳ Test en cours...' : '🔌 Tester connexion Radarr'}
+                </button>
+                {#if radarrTestResult && !radarrTestResult.ok}
+                  <div class="text-[11px] text-red-400 mt-1">❌ {radarrTestResult.error}</div>
+                {/if}
+              </div>
+
+              <!-- Sonarr -->
+              <div class="p-3 rounded-lg space-y-2.5" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                    📺 Sonarr
+                  </span>
+                  {#if sonarrTestResult}
+                    <span class="text-[11px] px-2 py-0.5 rounded font-medium"
+                          style="background: {sonarrTestResult.ok ? '#22c55e22' : '#ef444422'}; color: {sonarrTestResult.ok ? '#4ade80' : '#f87171'};">
+                      {sonarrTestResult.ok ? `Connecté (v${sonarrTestResult.version})` : 'Échec connexion'}
+                    </span>
+                  {/if}
+                </div>
+                <div>
+                  <label class="block text-[11px] mb-1" for="sonarrUrl" style="color: var(--text-muted);">URL Sonarr</label>
+                  <input
+                    id="sonarrUrl"
+                    type="text"
+                    bind:value={sonarrUrl}
+                    placeholder="http://localhost:8989"
+                    class="w-full px-2.5 py-1.5 rounded text-xs font-mono"
+                    style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[11px] mb-1" for="sonarrApiKey" style="color: var(--text-muted);">Clé API Sonarr</label>
+                  <input
+                    id="sonarrApiKey"
+                    type="text"
+                    bind:value={sonarrApiKey}
+                    placeholder="Clé API Sonarr"
+                    class="w-full px-2.5 py-1.5 rounded text-xs font-mono"
+                    style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onclick={testSonarr}
+                  disabled={isTestingSonarr || !sonarrUrl || !sonarrApiKey}
+                  class="w-full py-1.5 rounded text-xs font-semibold cursor-pointer transition-colors"
+                  style="background: #0284c722; border: 1px solid #0284c755; color: #38bdf8;"
+                >
+                  {isTestingSonarr ? '⏳ Test en cours...' : '🔌 Tester connexion Sonarr'}
+                </button>
+                {#if sonarrTestResult && !sonarrTestResult.ok}
+                  <div class="text-[11px] text-red-400 mt-1">❌ {sonarrTestResult.error}</div>
+                {/if}
+              </div>
+            </div>
+          </div>
+
+          <!-- Bouton de synchronisation immédiate -->
+          <div class="flex items-center justify-between gap-3 flex-wrap pt-2">
+            <div class="text-xs" style="color: var(--text-muted);">
+              💡 Les tags sont également synchronisés automatiquement lors de l'Auto-tri en arrière-plan et de l'application manuelle des priorités.
+            </div>
+            <button
+              type="button"
+              onclick={syncTagsNow}
+              disabled={isSyncingTags}
+              class="px-4 py-2 rounded-lg text-xs font-bold cursor-pointer flex items-center gap-2"
+              style="background: #7c3aed22; border: 1px solid #7c3aed66; color: #c4b5fd;"
+            >
+              {isSyncingTags ? '⏳ Synchronisation...' : '🏷️ Synchroniser les tags maintenant'}
+            </button>
+          </div>
+
+          {#if syncTagsResult}
+            <div class="p-3.5 rounded-xl text-xs space-y-2"
+                 style="background: {syncTagsResult.ok ? '#22c55e15' : '#ef444415'}; border: 1px solid {syncTagsResult.ok ? '#22c55e44' : '#ef444444'};">
+              <div class="flex items-center justify-between">
+                <span class="font-bold" style="color: {syncTagsResult.ok ? '#4ade80' : '#f87171'};">
+                  {syncTagsResult.ok ? '✅ Synchronisation des tags effectuée' : `❌ ${syncTagsResult.reason || 'Erreur'}`}
+                </span>
+                <button type="button" onclick={() => (syncTagsResult = null)} class="opacity-70 hover:opacity-100 px-1 text-xs">✕</button>
+              </div>
+
+              {#if syncTagsResult.ok}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono text-[11px]">
+                  <div class="p-2 rounded" style="background: var(--bg-card);">
+                    <strong>Prowlarr :</strong>
+                    <div>+{syncTagsResult.prowlarr?.tagged ?? 0} tagués / -{syncTagsResult.prowlarr?.untagged ?? 0} retirés</div>
+                  </div>
+                  <div class="p-2 rounded" style="background: var(--bg-card);">
+                    <strong>Radarr :</strong>
+                    {#if syncTagsResult.radarr?.configured}
+                      <div>+{syncTagsResult.radarr?.tagged ?? 0} tagués / -{syncTagsResult.radarr?.untagged ?? 0} retirés</div>
+                    {:else}
+                      <div style="color: var(--text-muted);">Non configuré</div>
+                    {/if}
+                  </div>
+                  <div class="p-2 rounded" style="background: var(--bg-card);">
+                    <strong>Sonarr :</strong>
+                    {#if syncTagsResult.sonarr?.configured}
+                      <div>+{syncTagsResult.sonarr?.tagged ?? 0} tagués / -{syncTagsResult.sonarr?.untagged ?? 0} retirés</div>
+                    {:else}
+                      <div style="color: var(--text-muted);">Non configuré</div>
+                    {/if}
+                  </div>
+                </div>
+
+                {#if syncTagsResult.details?.length > 0}
+                  <details class="mt-2 text-[11px]">
+                    <summary class="cursor-pointer underline" style="color: var(--text-muted);">
+                      Voir le statut détaillé par indexeur ({syncTagsResult.details.length})
+                    </summary>
+                    <div class="mt-2 space-y-1 max-h-48 overflow-y-auto p-2 rounded" style="background: var(--bg-card);">
+                      {#each syncTagsResult.details as d}
+                        <div class="flex items-center justify-between gap-2 py-0.5 border-b border-white/5">
+                          <span class="font-medium">{d.name}</span>
+                          <div class="flex items-center gap-2">
+                            <span style="color: var(--text-muted);">{d.reason}</span>
+                            <span class="px-1.5 py-0.5 rounded font-mono text-[10px]"
+                                  style="background: {d.shouldTag ? '#ef444422' : '#22c55e22'}; color: {d.shouldTag ? '#f87171' : '#4ade80'};">
+                              {d.shouldTag ? `Tagué [${syncTagsResult.tag}]` : 'Non tagué'}
+                            </span>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  </details>
+                {/if}
+              {/if}
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
@@ -1123,28 +1473,54 @@
       {/if}
     </div>
 
-    <!-- Bloc reCAPTCHA -->
-    <div class="rounded-lg p-3 space-y-2.5" style="background: var(--bg-card); border: 1px solid var(--border);">
-      <div class="text-xs font-semibold">🛡️ Protection reCAPTCHA sur la page de connexion</div>
-      <p class="text-[11px]" style="color: var(--text-muted);">
-        Par défaut, un widget reCAPTCHA visuel intégré protège la page <code>/login</code> sans clé externe. Pour utiliser <strong>Google reCAPTCHA v2 ("Je ne suis pas un robot")</strong>, renseignez vos clés ci-dessous :
-      </p>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-        <input
-          type="text"
-          bind:value={recaptchaSiteKey}
-          placeholder="Google reCAPTCHA Site Key (optionnel)"
-          class="px-2.5 py-1.5 rounded font-mono"
-          style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;"
-        />
-        <input
-          type="password"
-          bind:value={recaptchaSecretKey}
-          placeholder="Google reCAPTCHA Secret Key (optionnel)"
-          class="px-2.5 py-1.5 rounded font-mono"
-          style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;"
-        />
+    <!-- Bloc reCAPTCHA & Désactivation Captcha -->
+    <div class="rounded-lg p-3 space-y-3" style="background: var(--bg-card); border: 1px solid var(--border);">
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <div class="text-xs font-semibold">🛡️ Protection Captcha lors de la connexion</div>
+          <div class="text-[11px] mt-0.5" style="color: var(--text-muted);">
+            Sécurise la page <code>/login</code> contre les tentatives automatisées.
+          </div>
+        </div>
+        <!-- Toggle désactiver totalement le captcha -->
+        <label class="flex items-center gap-2 cursor-pointer select-none text-xs">
+          <input
+            type="checkbox"
+            bind:checked={captchaDisabled}
+            class="w-4 h-4 rounded accent-red-500 cursor-pointer"
+          />
+          <span style="color: {captchaDisabled ? '#f87171' : 'var(--text-muted)'}; font-weight: {captchaDisabled ? 'bold' : 'normal'};">
+            {captchaDisabled ? '🚫 Captcha désactivé' : 'Désactiver totalement le captcha'}
+          </span>
+        </label>
       </div>
+
+      {#if captchaDisabled}
+        <div class="p-2.5 rounded text-xs" style="background: #ef444415; border: 1px solid #ef444444; color: #fca5a5;">
+          ⚠️ <strong>Le captcha est entièrement désactivé :</strong> aucun contrôle visuel ni Google reCAPTCHA ne sera demandé lors de la connexion (recommandé si Sortarr est accessible sur votre réseau local sécurisé).
+        </div>
+      {:else}
+        <p class="text-[11px]" style="color: var(--text-muted);">
+          Par défaut, un widget reCAPTCHA visuel intégré protège la page <code>/login</code> sans clé externe. Pour utiliser <strong>Google reCAPTCHA v2 ("Je ne suis pas un robot")</strong>, renseignez vos clés ci-dessous :
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <input
+            type="text"
+            bind:value={recaptchaSiteKey}
+            placeholder="Google reCAPTCHA Site Key (optionnel)"
+            class="px-2.5 py-1.5 rounded font-mono"
+            style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;"
+          />
+          <input
+            type="password"
+            bind:value={recaptchaSecretKey}
+            placeholder="Google reCAPTCHA Secret Key (optionnel)"
+            class="px-2.5 py-1.5 rounded font-mono"
+            style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;"
+          />
+        </div>
+      {/if}
+
       <div class="flex justify-end">
         <button
           type="button"
@@ -1153,7 +1529,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"
           style="background: #7c3aed22; border: 1px solid #7c3aed55; color: #a78bfa;"
         >
-          Enregistrer reCAPTCHA
+          {secLoading ? '⏳ Enregistrement...' : 'Enregistrer la configuration captcha'}
         </button>
       </div>
     </div>

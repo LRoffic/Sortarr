@@ -13,6 +13,15 @@ const defaultConfig = {
   autoSortInterval: 20,
   // URL du service api-ratio (https://github.com/kreezx/api-ratio), ex. http://localhost:8679
   apiRatioUrl: '',
+  // Marquage automatique par tag selon le ratio (Radarr / Sonarr / cross-seed)
+  taggingEnabled: false,
+  taggingTag: 'no-arr',
+  taggingRatioThreshold: 1.0,
+  taggingExcludeFreeleech: true,
+  radarrUrl: '',
+  radarrApiKey: '',
+  sonarrUrl: '',
+  sonarrApiKey: '',
   // { [indexerId]: { enabled, type: 'unit3d'|'manual', baseUrl, apiKey, freeleech: 'auto'|'on'|'off', manualUpGB, manualDownGB } }
   trackers: {}
 };

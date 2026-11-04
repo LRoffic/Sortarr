@@ -7,7 +7,7 @@
   let error = $state('');
 
   // Captcha state
-  let captchaMode = $state('builtin'); // 'google' | 'builtin'
+  let captchaMode = $state('builtin'); // 'google' | 'builtin' | 'disabled'
   let googleSiteKey = $state('');
   let captchaChecked = $state(false);
   let captchaToken = $state('');
@@ -25,7 +25,9 @@
     try {
       const res = await fetch('/api/auth/captcha');
       const data = await res.json();
-      if (data.mode === 'google' && data.siteKey) {
+      if (data.mode === 'disabled') {
+        captchaMode = 'disabled';
+      } else if (data.mode === 'google' && data.siteKey) {
         captchaMode = 'google';
         googleSiteKey = data.siteKey;
         if (typeof window !== 'undefined' && !document.getElementById('google-recaptcha-script')) {
@@ -65,7 +67,9 @@
     error = '';
 
     let recaptchaToken = '';
-    if (captchaMode === 'google') {
+    if (captchaMode === 'disabled') {
+      // Captcha totalement désactivé
+    } else if (captchaMode === 'google') {
       recaptchaToken = window.grecaptcha?.getResponse?.() || '';
       if (!recaptchaToken) {
         error = 'Veuillez cocher la case Google reCAPTCHA ("Je ne suis pas un robot")';
@@ -211,7 +215,9 @@
         </div>
 
         <!-- Protection reCAPTCHA -->
-        {#if captchaMode === 'google' && googleSiteKey}
+        {#if captchaMode === 'disabled'}
+          <!-- Captcha totalement désactivé -->
+        {:else if captchaMode === 'google' && googleSiteKey}
           <div class="flex justify-center pt-1">
             <div class="g-recaptcha" data-sitekey={googleSiteKey} data-theme="dark"></div>
           </div>

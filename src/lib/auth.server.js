@@ -30,6 +30,7 @@ function loadStore() {
       secret: crypto.randomBytes(32).toString('hex'),
       recaptchaSiteKey: '',
       recaptchaSecretKey: '',
+      captchaDisabled: false,
       users: []
     };
     writeFileSync(path, JSON.stringify(initial, null, 2));
@@ -40,6 +41,7 @@ function loadStore() {
     if (!data.secret) data.secret = crypto.randomBytes(32).toString('hex');
     if (typeof data.recaptchaSiteKey !== 'string') data.recaptchaSiteKey = '';
     if (typeof data.recaptchaSecretKey !== 'string') data.recaptchaSecretKey = '';
+    if (typeof data.captchaDisabled !== 'boolean') data.captchaDisabled = false;
     if (!Array.isArray(data.users)) data.users = [];
     return data;
   } catch {
@@ -47,6 +49,7 @@ function loadStore() {
       secret: crypto.randomBytes(32).toString('hex'),
       recaptchaSiteKey: '',
       recaptchaSecretKey: '',
+      captchaDisabled: false,
       users: []
     };
   }
@@ -173,25 +176,37 @@ export function getSecuritySettings(username) {
     totpEnabled: !!user?.totpEnabled,
     backupCodesRemaining: Array.isArray(user?.backupCodes) ? user.backupCodes.length : 0,
     recaptchaSiteKey: store.recaptchaSiteKey || '',
-    recaptchaSecretKeySet: !!(store.recaptchaSecretKey || '').trim()
+    recaptchaSecretKeySet: !!(store.recaptchaSecretKey || '').trim(),
+    captchaDisabled: !!store.captchaDisabled
   };
 }
 
 export function getPublicRecaptchaConfig() {
   const store = loadStore();
+  if (store.captchaDisabled) {
+    return {
+      mode: 'disabled',
+      siteKey: '',
+      disabled: true
+    };
+  }
   const siteKey = (store.recaptchaSiteKey || '').trim();
   const secretKey = (store.recaptchaSecretKey || '').trim();
   return {
     mode: siteKey && secretKey ? 'google' : 'builtin',
-    siteKey: siteKey && secretKey ? siteKey : ''
+    siteKey: siteKey && secretKey ? siteKey : '',
+    disabled: false
   };
 }
 
-export function saveRecaptchaSettings(siteKey, secretKey) {
+export function saveRecaptchaSettings(siteKey, secretKey, captchaDisabled) {
   const store = loadStore();
   store.recaptchaSiteKey = String(siteKey || '').trim();
   if (secretKey !== undefined && secretKey !== null && secretKey !== '••••••••') {
     store.recaptchaSecretKey = String(secretKey).trim();
+  }
+  if (typeof captchaDisabled === 'boolean') {
+    store.captchaDisabled = captchaDisabled;
   }
   saveStore(store);
 }
@@ -428,6 +443,9 @@ export function generateBuiltinCaptcha() {
 
 export async function verifyCaptchaResponse({ recaptchaToken, captchaToken, captchaAnswer, ip }) {
   const store = loadStore();
+  if (store.captchaDisabled) {
+    return true;
+  }
   const siteKey = (store.recaptchaSiteKey || '').trim();
   const secretKey = (store.recaptchaSecretKey || '').trim();
 

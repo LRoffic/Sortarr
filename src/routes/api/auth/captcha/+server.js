@@ -3,6 +3,9 @@ import { getPublicRecaptchaConfig, generateBuiltinCaptcha } from '$lib/auth.serv
 
 export async function GET() {
   const recaptcha = getPublicRecaptchaConfig();
+  if (recaptcha.mode === 'disabled') {
+    return json({ ok: true, mode: 'disabled' });
+  }
   if (recaptcha.mode === 'google') {
     return json({ ok: true, mode: 'google', siteKey: recaptcha.siteKey });
   }

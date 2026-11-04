@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { getConfig } from '$lib/config.server.js';
 import { fetchIndexers, updateIndexerPriority } from '$lib/prowlarr.server.js';
+import { syncAllTags } from '$lib/arr.server.js';
 
 export async function POST({ request }) {
   const config = getConfig();
@@ -44,10 +45,20 @@ export async function POST({ request }) {
       }
     }
 
+    let tagReport = null;
+    if (config.taggingEnabled) {
+      try {
+        tagReport = await syncAllTags();
+      } catch (te) {
+        errors.push(`Erreur sync tags: ${te.message}`);
+      }
+    }
+
     return json({
       updated: results.length,
       errors,
-      ok: errors.length === 0
+      ok: errors.length === 0,
+      tagReport
     });
   } catch (e) {
     return json({ message: e.message }, { status: 500 });

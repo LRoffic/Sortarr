@@ -7,6 +7,7 @@ import { getConfig } from './config.server.js';
 import { updateIndexerPriority } from './prowlarr.server.js';
 import { getEnrichedIndexers } from './indexers.server.js';
 import { sortIndexers } from './sorting.js';
+import { syncAllTags } from './arr.server.js';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
@@ -68,6 +69,17 @@ export async function runAutoSort() {
         });
       } catch (e) {
         errors.push(`${idx.name}: ${e.message}`);
+      }
+    }
+
+    if (config.taggingEnabled) {
+      try {
+        log('Syncing tags (Prowlarr / Radarr / Sonarr)...');
+        const tagReport = await syncAllTags(sorted);
+        log(`Tag sync done (Prowlarr: +${tagReport.prowlarr.tagged}/-${tagReport.prowlarr.untagged}, Radarr: +${tagReport.radarr.tagged}/-${tagReport.radarr.untagged}, Sonarr: +${tagReport.sonarr.tagged}/-${tagReport.sonarr.untagged})`);
+      } catch (te) {
+        log(`Tag sync error: ${te.message}`);
+        errors.push(`Tag sync: ${te.message}`);
       }
     }
 
