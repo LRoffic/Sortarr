@@ -43,8 +43,16 @@
     }
   }
 
+  let autoSaveStatus = $state('idle'); // 'idle' | 'saving' | 'saved' | 'error'
+  let autoSaveError = $state('');
+  let hasMounted = false;
+  let autoSaveTimer = null;
+
   onMount(() => {
     checkUpdates(false);
+    setTimeout(() => {
+      hasMounted = true;
+    }, 400);
   });
 
   // untrack() prevents Svelte 5 from warning about capturing initial prop values in $state
@@ -133,6 +141,51 @@
       isSyncingTags = false;
     }
   }
+
+  // Auto-sauvegarde réactive de chaque paramètre
+  $effect(() => {
+    // Enregistre les dépendances réactives
+    const payload = {
+      prowlarrUrl,
+      prowlarrApiKey,
+      autoRefreshInterval,
+      autoSortEnabled,
+      autoSortInterval,
+      apiRatioUrl,
+      taggingEnabled,
+      taggingTag,
+      taggingRatioThreshold,
+      taggingExcludeFreeleech,
+      radarrUrl,
+      radarrApiKey,
+      sonarrUrl,
+      sonarrApiKey,
+      trackers: $state.snapshot(trackers)
+    };
+
+    if (!hasMounted) return;
+
+    clearTimeout(autoSaveTimer);
+    autoSaveStatus = 'saving';
+    autoSaveTimer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/save-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, skipTest: true })
+        });
+        const r = await res.json();
+        if (!r.ok) throw new Error(r.error || 'Erreur lors de la sauvegarde automatique');
+        autoSaveStatus = 'saved';
+        setTimeout(() => {
+          if (autoSaveStatus === 'saved') autoSaveStatus = 'idle';
+        }, 2500);
+      } catch (e) {
+        autoSaveStatus = 'error';
+        autoSaveError = e.message;
+      }
+    }, 600);
+  });
   let isTesting = $state(false);
   let testResult = $state(null);
 
@@ -517,9 +570,34 @@
 </svelte:head>
 
 <div class="max-w-xl mx-auto">
-  <h1 class="text-2xl font-bold mb-1">Configuration</h1>
+  <div class="flex items-center justify-between mb-1 gap-2 flex-wrap">
+    <h1 class="text-2xl font-bold">Configuration</h1>
+    {#if autoSaveStatus === 'saving'}
+      <span class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 animate-pulse"
+            style="background: #3b82f622; border: 1px solid #3b82f655; color: #60a5fa;">
+        ⏳ Enregistrement auto...
+      </span>
+    {:else if autoSaveStatus === 'saved'}
+      <span class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 transition-all"
+            style="background: #22c55e22; border: 1px solid #22c55e55; color: #4ade80;">
+        💾 Enregistré automatiquement
+      </span>
+    {:else if autoSaveStatus === 'error'}
+      <span class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5"
+            style="background: #ef444422; border: 1px solid #ef444455; color: #f87171;"
+            title={autoSaveError}>
+        ⚠️ Erreur auto-save
+      </span>
+    {:else}
+      <span class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 opacity-60"
+            style="background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);"
+            title="Toutes les modifications sont enregistrées automatiquement">
+        💾 Sauvegarde auto active
+      </span>
+    {/if}
+  </div>
   <p class="text-sm mb-8" style="color: var(--text-muted);">
-    Paramètres de connexion à votre instance Prowlarr.
+    Paramètres de connexion à votre instance Prowlarr et aux services associés.
   </p>
 
   <!-- Connection status card -->
@@ -1313,10 +1391,16 @@
       <button
         type="submit"
         disabled={isSaving}
-        class="w-full px-6 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer shadow-lg"
+        class="w-full px-6 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2"
         style="background: var(--accent); color: white; opacity: {isSaving ? 0.6 : 1};"
       >
-        {isSaving ? '⏳ Sauvegarde en cours...' : '💾 Sauvegarder les paramètres'}
+        {#if isSaving}
+          ⏳ Sauvegarde manuelle et test de connexion...
+        {:else if autoSaveStatus === 'saved'}
+          💾 Configuration enregistrée automatiquement
+        {:else}
+          💾 Enregistrer et tester la connexion
+        {/if}
       </button>
     </div>
   </form>
@@ -1500,6 +1584,7 @@
           <input
             type="checkbox"
             bind:checked={captchaDisabled}
+            onchange={() => saveRecaptcha()}
             class="w-4 h-4 rounded accent-red-500 cursor-pointer"
           />
           <span style="color: {captchaDisabled ? '#f87171' : 'var(--text-muted)'}; font-weight: {captchaDisabled ? 'bold' : 'normal'};">

@@ -28,11 +28,13 @@ export async function POST({ request }) {
   const sonarrUrl = String(body.sonarrUrl ?? '').trim().replace(/\/+$/, '');
   const sonarrApiKey = String(body.sonarrApiKey ?? '').trim();
 
-  if (!prowlarrUrl) return json({ ok: false, error: "L'URL Prowlarr est requise" }, { status: 400 });
-  if (!/^https?:\/\//i.test(prowlarrUrl)) {
-    return json({ ok: false, error: "L'URL doit commencer par http:// ou https://" }, { status: 400 });
+  if (!body.skipTest) {
+    if (!prowlarrUrl) return json({ ok: false, error: "L'URL Prowlarr est requise" }, { status: 400 });
+    if (!/^https?:\/\//i.test(prowlarrUrl)) {
+      return json({ ok: false, error: "L'URL doit commencer par http:// ou https://" }, { status: 400 });
+    }
+    if (!prowlarrApiKey) return json({ ok: false, error: 'La clé API est requise' }, { status: 400 });
   }
-  if (!prowlarrApiKey) return json({ ok: false, error: 'La clé API est requise' }, { status: 400 });
 
   try {
     const trackers = {};
@@ -82,6 +84,9 @@ export async function POST({ request }) {
   }
 
   restartScheduler();
+  if (body.skipTest) {
+    return json({ ok: true, autoSaved: true });
+  }
   const test = await testConnection(prowlarrUrl, prowlarrApiKey);
   return json({ ok: true, connectionOk: test.ok, version: test.version, testError: test.error });
 }
