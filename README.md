@@ -15,18 +15,29 @@ Contrairement à Prowlarr qui ne connaît pas votre ratio ni l'état du Freeleec
   1. **Trackers sans ratio (publics) ou à ratio infini (`∞`)** en tête.
   2. **Trackers en Freeleech actif (`FL`)** triés du **plus haut ratio au plus bas**.
   3. **Autres trackers privés** triés du **plus haut ratio au plus bas** (avec prise en compte du buffer en cas d'égalité).
+- 🏷️ **Protection automatique du ratio par Tag (`no-arr`) & Intégration Radarr / Sonarr / Cross-seed** :
+  - Définition d'un seuil de ratio personnalisable (par défaut `1.0`).
+  - Attribution automatique d'un tag d'exclusion (par défaut `no-arr`) sur vos indexeurs Prowlarr dès que leur ratio réel passe sous le seuil.
+  - **Association directe avec Radarr et Sonarr** via leurs API `v3` : Sortarr synchronise et applique directement le tag sur les indexeurs de vos applications *Arr.
+  - **Préservation de votre ratio** : dans Radarr/Sonarr, un indexeur doté d'un tag est strictement réservé aux médias possédant ce même tag. Comme vos médias n'ont pas ce tag, Radarr et Sonarr ne lancent plus de grabs automatiques sur ces trackers, stoppant toute dégradation du ratio.
+  - **Compatible Cross-seed** : l'indexeur reste actif et synchronisé dans Prowlarr pour la complétion de seeds et les recherches de cross-seed.
+  - **Restitution automatique** : dès que le ratio remonte au-dessus du seuil, le tag est automatiquement retiré.
+  - **Exemption Freeleech** : option pour ne pas brider un tracker lorsqu'il est en Freeleech (`FL`).
+  - **Badge visuel `🏷️ no-arr`** sur le tableau de bord pour identifier immédiatement les indexeurs bridés.
 - ⏱️ **Planificateur en arrière-plan (Auto-Sort Scheduler)** :
-  - Exécute automatiquement la récupération des statistiques et la mise à jour des priorités Prowlarr à intervalle régulier (ex. toutes les 20 minutes), même lorsqu'aucun navigateur n'est ouvert.
+  - Exécute automatiquement la récupération des statistiques, la mise à jour des priorités Prowlarr et la synchronisation des tags de protection à intervalle régulier, même en l'absence d'utilisateur connecté.
 - 🪙 **Tableau de bord des Points, Jetons, Karma, Zen & Crédits** :
   - Visibilité complète sur la page d'accueil de toutes les monnaies et bonus de vos trackers (`KARMA / ASTRA`, `JETONS` V3X + gain `/h` + jetons FL, `ZEN` C411 + niveau, `CRÉDITS` TR4KER & Draupnirr, `CRAZY BONUS` Crazy Spirits, `SEEDBONUS` UNIT3D/G3MINI/TeamFlix, `BONUS` Nostradamus & SpeedApp) ainsi que du nombre de torrents en **Seed**.
 - 📈 **Statistiques quotidiennes des ratios (`/stats`)** :
   - Enregistrement automatique jour par jour du ratio, de l'upload, du download, du buffer et des points pour chaque tracker (jusqu'à 365 jours d'historique).
   - Courbes d'évolution SVG, calcul des variations journalières (`Δ Ratio / j`, `Δ Upload / j`, `Δ Download / j`), vue par tracker, journal quotidien par date et matrice comparative.
-- 🔐 **Sécurité avancée** :
+- 💾 **Sauvegarde automatique en temps réel de la configuration** :
+  - Chaque modification dans les paramètres est automatiquement synchronisée et enregistrée avec un indicateur visuel en direct (`💾 Sauvegardé`).
+- 🔐 **Sécurité avancée & Captcha personnalisable** :
   - Inscription initiale automatique au premier lancement (`/register`), puis connexion obligatoire (`/login`).
   - Mots de passe hachés avec `scrypt` + sel aléatoire et option de modification du mot de passe.
   - **Double authentification (2FA TOTP)** compatible Google Authenticator, Authy et Bitwarden, avec QR Code et 6 codes de secours à usage unique.
-  - **Protection anti-bot reCAPTCHA** : Captcha visuel SVG intégré par défaut (sans clé externe) ou support de **Google reCAPTCHA v2** (« Je ne suis pas un robot »).
+  - **Protection anti-bot modulable** : Captcha visuel SVG intégré par défaut (sans clé externe), support de **Google reCAPTCHA v2**, ou désactivation complète du captcha pour les réseaux internes sécurisés.
 
 ---
 
@@ -196,7 +207,8 @@ Au tout premier lancement, aucun utilisateur n'étant enregistré, Sortarr vous 
 
 ### 2. Configuration de Prowlarr et des Trackers (`/settings`)
 1. Rendez-vous dans l'onglet **⚙️ Configuration**.
-2. Renseignez l'**URL de Prowlarr** (ex. `http://localhost:9696`) et votre **Clé API Prowlarr**, puis cliquez sur **💾 Sauvegarder**.
+   > 💡 **Sauvegarde automatique** : Chaque modification (champs de texte, cases à cocher, interrupteurs) est automatiquement sauvegardée en direct sans nécessiter de validation manuelle, avec confirmation visuelle (`💾 Sauvegardé`).
+2. Renseignez l'**URL de Prowlarr** (ex. `http://localhost:9696`) et votre **Clé API Prowlarr**.
 3. Dans la section **📊 Trackers (ratio, buffer, freeleech)** :
    - Cliquez sur **🔎 Détecter automatiquement** ou activez chaque tracker individuellement.
    - Sélectionnez le connecteur correspondant à votre tracker :
@@ -205,24 +217,43 @@ Au tout premier lancement, aucun utilisateur n'étant enregistré, Sortarr vous 
      - **Nostradamus** : collez votre cookie `_nostradamus_key=...`.
      - **YggReborn** : collez votre cookie `__ygg_sess=...; cf_clearance=...` (ou l'URL de `yggreborn-exporter`).
    - Cliquez sur **🔌 Tester** à côté d'un tracker pour vérifier instantanément son ratio, son upload/download, ses points et son statut Freeleech.
-4. Activez si souhaité l'**✨ Auto-tri en arrière-plan** en choisissant l'intervalle d'exécution en minutes, puis cliquez sur **💾 Sauvegarder**.
+4. Activez si souhaité l'**✨ Auto-tri en arrière-plan** en choisissant l'intervalle d'exécution en minutes.
 
-### 3. Gestion des priorités et suivi des points (`/`)
+### 3. Protection du ratio par Tag & Intégration Radarr / Sonarr (`/settings`)
+Pour empêcher **Radarr** et **Sonarr** de lancer des téléchargements automatiques sur les trackers dont votre ratio est faible tout en continuant de pouvoir seeder et cross-seeder dessus :
+
+1. Dans la section **🏷️ Protection du ratio par Tag**, activez l'interrupteur.
+2. Définissez le **Nom du tag Prowlarr / *Arr** (par défaut `no-arr`).
+3. Définissez le **Seuil de ratio minimum** (par défaut `1.0`). Dès que le ratio réel d'un tracker est `< seuil`, Sortarr lui applique le tag. Dès qu'il repasse `≥ seuil`, le tag est retiré.
+4. Cochez **⚡ Exempter les trackers en Freeleech (FL)** pour ne pas brider un tracker lorsqu'il est en Freeleech (les téléchargements n'impactant pas le ratio).
+5. **Association directe avec Radarr et Sonarr** :
+   - Renseignez l'URL et la clé API de **Radarr** et/ou **Sonarr**.
+   - Cliquez sur les boutons **Tester connexion** pour valider l'accès aux API.
+6. Cliquez sur **🏷️ Synchroniser les tags maintenant** pour appliquer immédiatement les tags sur Prowlarr, Radarr et Sonarr (ou laissez l'Auto-tri périodique le faire automatiquement).
+
+> **Pourquoi cette méthode est idéale pour le ratio et cross-seed ?**
+> Dans l'écosystème *Arr, un indexeur tagué n'est sollicité que pour les films ou séries portant ce même tag. Comme vos médias surveillés ne portent pas ce tag, Radarr et Sonarr ne grabberont plus jamais automatiquement de release sur ces trackers à risque. En revanche, l'indexeur reste actif dans Prowlarr, ce qui permet à vos torrents existants de continuer à seeder et aux outils d'injection comme **cross-seed** de continuer à fonctionner.
+
+### 4. Gestion des priorités et suivi des points (`/`)
 - Sur la page **Indexeurs** (`/`), consultez en haut le bandeau récapitulatif **🪙 Points, Jetons, Karma, Crédits & Bonus** ainsi que les cartes détaillées de chaque tracker.
+- Les indexeurs protégés par la règle de ratio affichent un badge violet **`🏷️ no-arr`** aux côtés des éventuels badges `FL` (Freeleech) ou `PAUSE`.
 - Cliquez sur **✨ Auto-trier (local)** pour prévisualiser le tri optimal ou glissez-déposez les cartes manuellement.
-- Cliquez sur **💾 Appliquer les priorités** pour envoyer le nouvel ordre à Prowlarr.
+- Cliquez sur **💾 Appliquer les priorités** pour envoyer le nouvel ordre à Prowlarr et synchroniser les tags.
 
-### 4. Suivi quotidien des ratios (`/stats`)
+### 5. Suivi quotidien des ratios (`/stats`)
 - Ouvrez l'onglet **📈 Statistiques** pour consulter l'évolution jour par jour de vos ratios, uploads, downloads, buffers et points bonus :
   - **📊 Par tracker** : courbe d'évolution et historique quotidien détaillé par tracker.
   - **📅 Journal par jour** : bilan de tous vos trackers groupé date par date.
   - **🧮 Tableau comparatif** : matrice croisée `Dates × Trackers`.
 
-### 5. Sécurité : Mot de passe, 2FA & reCAPTCHA (`/settings`)
+### 6. Sécurité : Mot de passe, 2FA & reCAPTCHA (`/settings`)
 - En bas de la page **⚙️ Configuration** (section **🔐 Sécurité**), vous pouvez :
   - **Modifier votre mot de passe** à tout moment.
   - **Activer la double authentification (TOTP 2FA)** en scannant le QR Code avec votre application d'authentification et en conservant vos 6 codes de secours.
-  - Configurer des clés **Google reCAPTCHA v2** (ou conserver le captcha visuel SVG intégré actif par défaut).
+  - **Configurer ou désactiver la protection anti-bot** :
+    - *Captcha visuel SVG Sortarr* (actif par défaut, fonctionne hors-ligne sans clé).
+    - *Google reCAPTCHA v2* (case à cocher « Je ne suis pas un robot » avec vos clés site et secrète).
+    - *Désactiver totalement le captcha* (option disponible pour simplifier la connexion si Sortarr est hébergé uniquement sur votre réseau local sécurisé).
 
 ---
 
