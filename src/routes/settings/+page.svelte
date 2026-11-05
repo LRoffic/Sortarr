@@ -116,9 +116,9 @@
     { id: 'prowlarr', label: 'Prowlarr', icon: '🌐' },
     { id: 'autosort', label: 'Tri & Cycle', icon: '⚡' },
     { id: 'tagging', label: 'Marquage Arr', icon: '🏷️' },
-    { id: 'paliers', label: 'Paliers stats', icon: '🎯' },
     { id: 'apiratio', label: 'api-ratio', icon: '📡' },
     { id: 'trackers', label: 'Trackers', icon: '📊' },
+    { id: 'paliers', label: 'Paliers stats', icon: '🎯' },
     { id: 'security', label: 'Sécurité & 2FA', icon: '🔐' },
     { id: 'update', label: 'Mises à jour', icon: '🔄' },
     { id: 'telemetry', label: 'Télémétrie', icon: '🛰️' },
@@ -1373,370 +1373,76 @@
       {/if}
     </div>
 
-    <!-- ── Paliers des statistiques (Global vs Par tracker) ── -->
-    <div id="paliers" class="scroll-mt-20 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
-      <div class="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
-        <div>
-          <div class="text-sm font-semibold flex items-center gap-2">
-            <span>🎯</span> Paliers des statistiques (Objectifs des jauges)
-          </div>
-          <div class="text-xs mt-0.5" style="color: var(--text-muted);">
-            Personnalisez les paliers d'objectifs (seuil 100%) pour le calcul des jauges et tooltips (Ratio, Upload, Download, Buffer, Karma/Points, Astra, Seeds).
-          </div>
+    <!-- ── Service api-ratio ── -->
+    <div id="apiratio" class="scroll-mt-20 rounded-xl p-4 space-y-2.5" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+      <div>
+        <div class="text-sm font-semibold flex items-center gap-2">
+          <span>📡</span> Service api-ratio (optionnel — <a href="https://github.com/kreezx/api-ratio" target="_blank" class="underline" style="color: #a78bfa;">kreezx/api-ratio</a>)
+        </div>
+        <div class="text-xs mt-0.5" style="color: var(--text-muted);">
+          Centralise C411, TR4KER, Gemini/G3MINI, Crazy Spirits, Nostradamus, La Cale, Memphis, The Old School, Generation Free, HD-Space, NEXUM, Redacted via <code>GET /ratios</code>. N'expose pas le freeleech (réglez-le par tracker ci-dessous).
         </div>
       </div>
 
-      <!-- Sélecteur de mode : Global vs Par tracker -->
-      <div class="p-3 rounded-lg space-y-2.5" style="background: var(--bg-card); border: 1px solid var(--border);">
-        <div class="text-xs font-semibold text-slate-300">Mode d'application des paliers :</div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <label class="flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all {statsPaliers.mode === 'global' ? 'border-purple-500 bg-purple-500/10' : 'border-slate-800 bg-slate-900/40'}">
-            <input
-              type="radio"
-              name="statsPaliersMode"
-              value="global"
-              bind:group={statsPaliers.mode}
-              class="mt-0.5 text-purple-600 focus:ring-purple-500"
-            />
-            <div>
-              <div class="text-xs font-semibold" style="color: {statsPaliers.mode === 'global' ? '#c4b5fd' : '#e2e8f0'};">
-                🌐 Paliers globaux
-              </div>
-              <div class="text-[11px]" style="color: var(--text-muted);">
-                Mêmes objectifs partagés par l'ensemble des trackers
-              </div>
-            </div>
-          </label>
-
-          <label class="flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all {statsPaliers.mode === 'tracker' ? 'border-purple-500 bg-purple-500/10' : 'border-slate-800 bg-slate-900/40'}">
-            <input
-              type="radio"
-              name="statsPaliersMode"
-              value="tracker"
-              bind:group={statsPaliers.mode}
-              class="mt-0.5 text-purple-600 focus:ring-purple-500"
-            />
-            <div>
-              <div class="text-xs font-semibold" style="color: {statsPaliers.mode === 'tracker' ? '#c4b5fd' : '#e2e8f0'};">
-                📊 Paliers par tracker
-              </div>
-              <div class="text-[11px]" style="color: var(--text-muted);">
-                Personnalisation individuelle dans chaque carte de tracker
-              </div>
-            </div>
-          </label>
+      <div class="p-3.5 rounded-xl space-y-2.5" style="background: var(--bg-card); border: 1px solid var(--border);">
+        <label class="block text-xs font-semibold" for="apiRatioUrl">
+          🐳 URL du service <code>api-ratio</code>
+        </label>
+        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <input
+            id="apiRatioUrl"
+            type="text"
+            bind:value={apiRatioUrl}
+            placeholder="http://localhost:8679"
+            class="flex-1 min-w-[200px] px-3 py-2 rounded-lg text-xs font-mono"
+            style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;"
+          />
+          <button
+            type="button"
+            onclick={testApiRatio}
+            disabled={isTestingApiRatio || !apiRatioUrl.trim()}
+            class="px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 shrink-0"
+            style="background: {isTestingApiRatio ? 'var(--bg-secondary)' : '#0284c722'}; border: 1px solid {isTestingApiRatio ? 'var(--border)' : '#0284c766'}; color: {isTestingApiRatio ? 'var(--text-muted)' : '#7dd3fc'};"
+          >
+            {isTestingApiRatio ? '⏳ Test en cours...' : '🔌 Valider l\'URL api-ratio'}
+          </button>
         </div>
 
-        {#if statsPaliers.mode === 'tracker'}
-          <div class="text-[11px] text-purple-300/90 bg-purple-950/40 p-2.5 rounded-lg border border-purple-800/40 flex items-center gap-2">
-            <span>💡</span>
-            <span>En mode <strong>Par tracker</strong>, configurez les objectifs propres à chaque tracker directement dans sa carte ci-dessous.</span>
-          </div>
-        {/if}
-      </div>
-
-      <!-- Valeurs globales (affichées uniquement en mode global) -->
-      {#if statsPaliers.mode === 'global'}
-        <div class="p-3 rounded-lg space-y-3" style="background: var(--bg-card); border: 1px solid var(--border);">
-          <div class="flex items-center justify-between flex-wrap gap-2">
-            <div class="text-xs font-semibold text-slate-300">
-              Valeurs des paliers globaux :
+        {#if apiRatioTestResult}
+          <div
+            class="rounded-lg p-3 text-xs flex items-start justify-between gap-2"
+            style="background: {apiRatioTestResult.ok ? '#22c55e22' : '#ef444422'}; border: 1px solid {apiRatioTestResult.ok ? '#22c55e' : '#ef4444'}; color: {apiRatioTestResult.ok ? '#4ade80' : '#f87171'};"
+          >
+            <div>
+              {#if apiRatioTestResult.ok}
+                <div>
+                  ✅ Connexion réussie à <strong>api-ratio</strong> ({apiRatioTestResult.url})
+                </div>
+                <div class="mt-1 text-[11px]" style="color: #86efac;">
+                  {apiRatioTestResult.count} tracker{apiRatioTestResult.count > 1 ? 's' : ''} disponible{apiRatioTestResult.count > 1 ? 's' : ''} :
+                  <span class="font-mono font-bold text-white ml-1">
+                    {apiRatioTestResult.trackers?.join(', ') || 'aucun tracker retourné'}
+                  </span>
+                </div>
+              {:else}
+                <div>❌ Impossible de contacter api-ratio : {apiRatioTestResult.error}</div>
+              {/if}
             </div>
             <button
               type="button"
-              onclick={() => {
-                statsPaliers.global = { ...DEFAULT_PALIERS };
-              }}
-              class="text-[11px] text-purple-400 hover:text-purple-300 underline cursor-pointer"
+              onclick={() => (apiRatioTestResult = null)}
+              class="text-xs opacity-70 hover:opacity-100 cursor-pointer px-1 shrink-0"
+              title="Masquer le message"
             >
-              Rétablir les valeurs par défaut
+              ✕
             </button>
           </div>
-
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            <div>
-              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-ratio">
-                Ratio actuel
-              </label>
-              <input
-                id="palier-ratio"
-                type="number"
-                step="0.1"
-                min="0.1"
-                max="100"
-                bind:value={statsPaliers.global.ratio}
-                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
-              />
-              <span class="text-[10px] text-slate-500">Défaut: 4.0</span>
-            </div>
-
-            <div>
-              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-upload">
-                Upload (Go)
-              </label>
-              <input
-                id="palier-upload"
-                type="number"
-                step="1"
-                min="1"
-                bind:value={statsPaliers.global.uploadGB}
-                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
-              />
-              <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.uploadGB)}</span>
-            </div>
-
-            <div>
-              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-download">
-                Download (Go)
-              </label>
-              <input
-                id="palier-download"
-                type="number"
-                step="1"
-                min="1"
-                bind:value={statsPaliers.global.downloadGB}
-                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #cbd5e1;"
-              />
-              <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.downloadGB)}</span>
-            </div>
-
-            <div>
-              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-buffer">
-                Buffer (Go)
-              </label>
-              <input
-                id="palier-buffer"
-                type="number"
-                step="1"
-                min="1"
-                bind:value={statsPaliers.global.bufferGB}
-                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
-              />
-              <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.bufferGB)}</span>
-            </div>
-
-            <div>
-              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-points">
-                Points / Karma
-              </label>
-              <input
-                id="palier-points"
-                type="number"
-                step="500"
-                min="0"
-                bind:value={statsPaliers.global.points}
-                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #facc15;"
-              />
-              <span class="text-[10px] text-slate-500">Défaut: 25 000</span>
-            </div>
-
-            <div>
-              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-astra">
-                Astra (site)
-              </label>
-              <input
-                id="palier-astra"
-                type="number"
-                step="50"
-                min="0"
-                bind:value={statsPaliers.global.astra}
-                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #c084fc;"
-              />
-              <span class="text-[10px] text-slate-500">Défaut: 1 000</span>
-            </div>
-
-            <div class="col-span-2 sm:col-span-2">
-              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-seeds">
-                Seeds actifs
-              </label>
-              <input
-                id="palier-seeds"
-                type="number"
-                step="10"
-                min="0"
-                bind:value={statsPaliers.global.seeds}
-                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
-              />
-              <span class="text-[10px] text-slate-500">Défaut: 150</span>
-            </div>
-          </div>
-        </div>
-      {/if}
-
-      {#if statsPaliers.mode === 'tracker'}
-        <!-- Liste des paliers individuels par tracker (exclut les trackers publics) -->
-        <div class="p-3 rounded-lg space-y-3" style="background: var(--bg-card); border: 1px solid var(--border);">
-          <div class="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <div class="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                <span>📊</span> Objectifs personnalisés par tracker ({privateIndexers.length})
-              </div>
-              <div class="text-[11px]" style="color: var(--text-muted);">
-                Renseignez les paliers d'objectifs pour chaque tracker. Seuls les trackers privés et semi-privés sont affichés.
-              </div>
-            </div>
-          </div>
-
-          {#if !privateIndexers.length}
-            <div class="p-4 rounded-lg text-center text-xs" style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-muted);">
-              ⚠️ Aucun indexeur privé détecté. Configurez d'abord la clé API Prowlarr pour lister vos trackers.
-            </div>
-          {:else}
-            <div class="space-y-3">
-              {#each privateIndexers as idx (idx.id)}
-                {@const t = trackers[idx.id]}
-                {@const logoUrl = getTrackerLogo(idx)}
-                {@const isCustom = t?.paliers && Object.values(t.paliers).some(v => v !== '' && v !== null && v !== undefined)}
-                <div class="rounded-xl p-3 border transition-all" style="background: var(--bg-secondary); border-color: {isCustom ? '#7c3aed66' : 'var(--border)'};">
-                  <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
-                    <div class="flex items-center gap-2">
-                      <span class="w-6 h-6 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
-                            style="background: #0b0f19; border: 1px solid var(--border);">
-                        {#if logoUrl && !failedLogos[idx.id]}
-                          <img src={logoUrl} alt={idx.name} class="w-4 h-4 object-contain" onerror={() => { failedLogos[idx.id] = true; }} />
-                        {:else}
-                          <span class="text-[9px] font-bold text-purple-400">{getTrackerInitials(idx.name)}</span>
-                        {/if}
-                      </span>
-                      <span class="text-xs font-semibold text-slate-200">{idx.name}</span>
-                      {#if isCustom}
-                        <span class="text-[10px] px-1.5 py-0.2 rounded-full font-semibold" style="background: #7c3aed22; color: #c4b5fd; border: 1px solid #7c3aed55;">
-                          🎯 Personnalisé
-                        </span>
-                      {/if}
-                    </div>
-
-                    <button
-                      type="button"
-                      onclick={() => {
-                        if (t) t.paliers = { ratio: '', uploadGB: '', downloadGB: '', bufferGB: '', points: '', astra: '', seeds: '' };
-                      }}
-                      class="text-[11px] px-2.5 py-1 rounded-md border font-medium transition-all cursor-pointer flex items-center gap-1.5 {isCustom ? 'text-purple-300 border-purple-500/50 bg-purple-950/40 hover:bg-purple-900/60' : 'text-slate-400 border-slate-700/80 bg-slate-800/40 hover:text-slate-200 hover:bg-slate-800'}"
-                      title="Rétablir les paliers par défaut pour {idx.name} uniquement"
-                    >
-                      <span>↺</span> <span>Rétablir par défaut</span>
-                    </button>
-                  </div>
-
-                  {#if t}
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
-                      <div>
-                        <label class="block text-[10px] text-slate-400">
-                          Ratio
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="0.1"
-                            bind:value={t.paliers.ratio}
-                            placeholder="ex: 4.0"
-                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
-                            style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
-                          />
-                        </label>
-                      </div>
-                      <div>
-                        <label class="block text-[10px] text-slate-400">
-                          Upload (Go)
-                          <input
-                            type="number"
-                            step="1"
-                            min="1"
-                            bind:value={t.paliers.uploadGB}
-                            placeholder="ex: 2048"
-                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
-                            style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
-                          />
-                        </label>
-                      </div>
-                      <div>
-                        <label class="block text-[10px] text-slate-400">
-                          Download (Go)
-                          <input
-                            type="number"
-                            step="1"
-                            min="1"
-                            bind:value={t.paliers.downloadGB}
-                            placeholder="ex: 2048"
-                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
-                            style="background: var(--bg-card); border: 1px solid var(--border); color: #cbd5e1;"
-                          />
-                        </label>
-                      </div>
-                      <div>
-                        <label class="block text-[10px] text-slate-400">
-                          Buffer (Go)
-                          <input
-                            type="number"
-                            step="1"
-                            min="1"
-                            bind:value={t.paliers.bufferGB}
-                            placeholder="ex: 1024"
-                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
-                            style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
-                          />
-                        </label>
-                      </div>
-                      <div>
-                        <label class="block text-[10px] text-slate-400">
-                          Points / Karma
-                          <input
-                            type="number"
-                            step="500"
-                            min="0"
-                            bind:value={t.paliers.points}
-                            placeholder="ex: 25000"
-                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
-                            style="background: var(--bg-card); border: 1px solid var(--border); color: #facc15;"
-                          />
-                        </label>
-                      </div>
-                      <div>
-                        <label class="block text-[10px] text-slate-400">
-                          Astra
-                          <input
-                            type="number"
-                            step="50"
-                            min="0"
-                            bind:value={t.paliers.astra}
-                            placeholder="ex: 1000"
-                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
-                            style="background: var(--bg-card); border: 1px solid var(--border); color: #c084fc;"
-                          />
-                        </label>
-                      </div>
-                      <div class="col-span-2 sm:col-span-2">
-                        <label class="block text-[10px] text-slate-400">
-                          Seeds
-                          <input
-                            type="number"
-                            step="10"
-                            min="0"
-                            bind:value={t.paliers.seeds}
-                            placeholder="ex: 150"
-                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
-                            style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  {/if}
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      {/if}
+        {/if}
+      </div>
     </div>
 
     <!-- ── Trackers : stats réelles (ratio / buffer / freeleech) ── -->
-    <div id="trackers" class="scroll-mt-20 rounded-xl p-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+    <div id="trackers" class="scroll-mt-20 rounded-xl p-4 space-y-3" style="background: var(--bg-secondary); border: 1px solid var(--border);">
       <div class="flex items-start justify-between gap-3 mb-3 flex-wrap sm:flex-nowrap">
         <div>
           <div class="text-sm font-semibold">📊 Trackers (ratio, buffer, freeleech)</div>
@@ -1908,66 +1614,6 @@
       {:else if !data.indexers?.length}
         <p class="text-xs" style="color: var(--text-muted);">Sauvegardez d'abord l'URL et la clé API Prowlarr, puis rechargez la page.</p>
       {/if}
-
-      <div id="apiratio" class="scroll-mt-20 mb-3 p-3.5 rounded-xl space-y-2.5" style="background: var(--bg-card); border: 1px solid var(--border);">
-        <label class="block text-xs font-semibold" for="apiRatioUrl">
-          🐳 URL du service <code>api-ratio</code> (optionnel — <a href="https://github.com/kreezx/api-ratio" target="_blank" class="underline" style="color: #a78bfa;">kreezx/api-ratio</a>)
-        </label>
-        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          <input
-            id="apiRatioUrl"
-            type="text"
-            bind:value={apiRatioUrl}
-            placeholder="http://localhost:8679"
-            class="flex-1 min-w-[200px] px-3 py-2 rounded-lg text-xs font-mono"
-            style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;"
-          />
-          <button
-            type="button"
-            onclick={testApiRatio}
-            disabled={isTestingApiRatio || !apiRatioUrl.trim()}
-            class="px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 shrink-0"
-            style="background: {isTestingApiRatio ? 'var(--bg-secondary)' : '#0284c722'}; border: 1px solid {isTestingApiRatio ? 'var(--border)' : '#0284c766'}; color: {isTestingApiRatio ? 'var(--text-muted)' : '#7dd3fc'};"
-          >
-            {isTestingApiRatio ? '⏳ Test en cours...' : '🔌 Valider l\'URL api-ratio'}
-          </button>
-        </div>
-
-        {#if apiRatioTestResult}
-          <div
-            class="rounded-lg p-3 text-xs flex items-start justify-between gap-2"
-            style="background: {apiRatioTestResult.ok ? '#22c55e22' : '#ef444422'}; border: 1px solid {apiRatioTestResult.ok ? '#22c55e' : '#ef4444'}; color: {apiRatioTestResult.ok ? '#4ade80' : '#f87171'};"
-          >
-            <div>
-              {#if apiRatioTestResult.ok}
-                <div>
-                  ✅ Connexion réussie à <strong>api-ratio</strong> ({apiRatioTestResult.url})
-                </div>
-                <div class="mt-1 text-[11px]" style="color: #86efac;">
-                  {apiRatioTestResult.count} tracker{apiRatioTestResult.count > 1 ? 's' : ''} disponible{apiRatioTestResult.count > 1 ? 's' : ''} :
-                  <span class="font-mono font-bold text-white ml-1">
-                    {apiRatioTestResult.trackers?.join(', ') || 'aucun tracker retourné'}
-                  </span>
-                </div>
-              {:else}
-                <div>❌ Impossible de contacter api-ratio : {apiRatioTestResult.error}</div>
-              {/if}
-            </div>
-            <button
-              type="button"
-              onclick={() => (apiRatioTestResult = null)}
-              class="text-xs opacity-70 hover:opacity-100 cursor-pointer px-1 shrink-0"
-              title="Masquer le message"
-            >
-              ✕
-            </button>
-          </div>
-        {/if}
-
-        <p class="text-xs" style="color: var(--text-muted);">
-          Centralise C411, TR4KER, Gemini/G3MINI, Crazy Spirits, Nostradamus, La Cale, Memphis, The Old School, Generation Free, HD-Space, NEXUM, Redacted via <code>GET /ratios</code>. N'expose pas le freeleech (réglez-le manuellement ci-dessous).
-        </p>
-      </div>
 
       <div class="space-y-3">
         {#each data.indexers ?? [] as idx (idx.id)}
@@ -2373,6 +2019,368 @@
           </div>
         {/each}
       </div>
+    </div>
+
+    <!-- ── Paliers des statistiques (Global vs Par tracker) ── -->
+    <div id="paliers" class="scroll-mt-20 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+      <div class="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
+        <div>
+          <div class="text-sm font-semibold flex items-center gap-2">
+            <span>🎯</span> Paliers des statistiques (Objectifs des jauges)
+          </div>
+          <div class="text-xs mt-0.5" style="color: var(--text-muted);">
+            Personnalisez les paliers d'objectifs (seuil 100%) pour le calcul des jauges et tooltips (Ratio, Upload, Download, Buffer, Karma/Points, Astra, Seeds).
+          </div>
+        </div>
+      </div>
+
+      <!-- Sélecteur de mode : Global vs Par tracker -->
+      <div class="p-3 rounded-lg space-y-2.5" style="background: var(--bg-card); border: 1px solid var(--border);">
+        <div class="text-xs font-semibold text-slate-300">Mode d'application des paliers :</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <label class="flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all {statsPaliers.mode === 'global' ? 'border-purple-500 bg-purple-500/10' : 'border-slate-800 bg-slate-900/40'}">
+            <input
+              type="radio"
+              name="statsPaliersMode"
+              value="global"
+              bind:group={statsPaliers.mode}
+              class="mt-0.5 text-purple-600 focus:ring-purple-500"
+            />
+            <div>
+              <div class="text-xs font-semibold" style="color: {statsPaliers.mode === 'global' ? '#c4b5fd' : '#e2e8f0'};">
+                🌐 Paliers globaux
+              </div>
+              <div class="text-[11px]" style="color: var(--text-muted);">
+                Mêmes objectifs partagés par l'ensemble des trackers
+              </div>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all {statsPaliers.mode === 'tracker' ? 'border-purple-500 bg-purple-500/10' : 'border-slate-800 bg-slate-900/40'}">
+            <input
+              type="radio"
+              name="statsPaliersMode"
+              value="tracker"
+              bind:group={statsPaliers.mode}
+              class="mt-0.5 text-purple-600 focus:ring-purple-500"
+            />
+            <div>
+              <div class="text-xs font-semibold" style="color: {statsPaliers.mode === 'tracker' ? '#c4b5fd' : '#e2e8f0'};">
+                📊 Paliers par tracker
+              </div>
+              <div class="text-[11px]" style="color: var(--text-muted);">
+                Personnalisation individuelle dans chaque carte de tracker
+              </div>
+            </div>
+          </label>
+        </div>
+
+        {#if statsPaliers.mode === 'tracker'}
+          <div class="text-[11px] text-purple-300/90 bg-purple-950/40 p-2.5 rounded-lg border border-purple-800/40 flex items-center gap-2">
+            <span>💡</span>
+            <span>En mode <strong>Par tracker</strong>, configurez les objectifs propres à chaque tracker directement dans sa carte ci-dessous.</span>
+          </div>
+        {/if}
+      </div>
+
+      <!-- Valeurs globales (affichées uniquement en mode global) -->
+      {#if statsPaliers.mode === 'global'}
+        <div class="p-3 rounded-lg space-y-3" style="background: var(--bg-card); border: 1px solid var(--border);">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="text-xs font-semibold text-slate-300">
+              Valeurs des paliers globaux :
+            </div>
+            <button
+              type="button"
+              onclick={() => {
+                statsPaliers.global = { ...DEFAULT_PALIERS };
+              }}
+              class="text-[11px] text-purple-400 hover:text-purple-300 underline cursor-pointer"
+            >
+              Rétablir les valeurs par défaut
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div>
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-ratio">
+                Ratio actuel
+              </label>
+              <input
+                id="palier-ratio"
+                type="number"
+                step="0.1"
+                min="0.1"
+                max="100"
+                bind:value={statsPaliers.global.ratio}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+              />
+              <span class="text-[10px] text-slate-500">Défaut: 4.0</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-upload">
+                Upload (Go)
+              </label>
+              <input
+                id="palier-upload"
+                type="number"
+                step="1"
+                min="1"
+                bind:value={statsPaliers.global.uploadGB}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+              />
+              <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.uploadGB)}</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-download">
+                Download (Go)
+              </label>
+              <input
+                id="palier-download"
+                type="number"
+                step="1"
+                min="1"
+                bind:value={statsPaliers.global.downloadGB}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #cbd5e1;"
+              />
+              <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.downloadGB)}</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-buffer">
+                Buffer (Go)
+              </label>
+              <input
+                id="palier-buffer"
+                type="number"
+                step="1"
+                min="1"
+                bind:value={statsPaliers.global.bufferGB}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+              />
+              <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.bufferGB)}</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-points">
+                Points / Karma
+              </label>
+              <input
+                id="palier-points"
+                type="number"
+                step="500"
+                min="0"
+                bind:value={statsPaliers.global.points}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #facc15;"
+              />
+              <span class="text-[10px] text-slate-500">Défaut: 25 000</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-astra">
+                Astra (site)
+              </label>
+              <input
+                id="palier-astra"
+                type="number"
+                step="50"
+                min="0"
+                bind:value={statsPaliers.global.astra}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #c084fc;"
+              />
+              <span class="text-[10px] text-slate-500">Défaut: 1 000</span>
+            </div>
+
+            <div class="col-span-2 sm:col-span-2">
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-seeds">
+                Seeds actifs
+              </label>
+              <input
+                id="palier-seeds"
+                type="number"
+                step="10"
+                min="0"
+                bind:value={statsPaliers.global.seeds}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+              />
+              <span class="text-[10px] text-slate-500">Défaut: 150</span>
+            </div>
+          </div>
+        </div>
+      {/if}
+
+      {#if statsPaliers.mode === 'tracker'}
+        <!-- Liste des paliers individuels par tracker (exclut les trackers publics) -->
+        <div class="p-3 rounded-lg space-y-3" style="background: var(--bg-card); border: 1px solid var(--border);">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <div class="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                <span>📊</span> Objectifs personnalisés par tracker ({privateIndexers.length})
+              </div>
+              <div class="text-[11px]" style="color: var(--text-muted);">
+                Renseignez les paliers d'objectifs pour chaque tracker. Seuls les trackers privés et semi-privés sont affichés.
+              </div>
+            </div>
+          </div>
+
+          {#if !privateIndexers.length}
+            <div class="p-4 rounded-lg text-center text-xs" style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-muted);">
+              ⚠️ Aucun indexeur privé détecté. Configurez d'abord la clé API Prowlarr pour lister vos trackers.
+            </div>
+          {:else}
+            <div class="space-y-3">
+              {#each privateIndexers as idx (idx.id)}
+                {@const t = trackers[idx.id]}
+                {@const logoUrl = getTrackerLogo(idx)}
+                {@const isCustom = t?.paliers && Object.values(t.paliers).some(v => v !== '' && v !== null && v !== undefined)}
+                <div class="rounded-xl p-3 border transition-all" style="background: var(--bg-secondary); border-color: {isCustom ? '#7c3aed66' : 'var(--border)'};">
+                  <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="w-6 h-6 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
+                            style="background: #0b0f19; border: 1px solid var(--border);">
+                        {#if logoUrl && !failedLogos[idx.id]}
+                          <img src={logoUrl} alt={idx.name} class="w-4 h-4 object-contain" onerror={() => { failedLogos[idx.id] = true; }} />
+                        {:else}
+                          <span class="text-[9px] font-bold text-purple-400">{getTrackerInitials(idx.name)}</span>
+                        {/if}
+                      </span>
+                      <span class="text-xs font-semibold text-slate-200">{idx.name}</span>
+                      {#if isCustom}
+                        <span class="text-[10px] px-1.5 py-0.2 rounded-full font-semibold" style="background: #7c3aed22; color: #c4b5fd; border: 1px solid #7c3aed55;">
+                          🎯 Personnalisé
+                        </span>
+                      {/if}
+                    </div>
+
+                    <button
+                      type="button"
+                      onclick={() => {
+                        if (t) t.paliers = { ratio: '', uploadGB: '', downloadGB: '', bufferGB: '', points: '', astra: '', seeds: '' };
+                      }}
+                      class="text-[11px] px-2.5 py-1 rounded-md border font-medium transition-all cursor-pointer flex items-center gap-1.5 {isCustom ? 'text-purple-300 border-purple-500/50 bg-purple-950/40 hover:bg-purple-900/60' : 'text-slate-400 border-slate-700/80 bg-slate-800/40 hover:text-slate-200 hover:bg-slate-800'}"
+                      title="Rétablir les paliers par défaut pour {idx.name} uniquement"
+                    >
+                      <span>↺</span> <span>Rétablir par défaut</span>
+                    </button>
+                  </div>
+
+                  {#if t}
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Ratio
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0.1"
+                            bind:value={t.paliers.ratio}
+                            placeholder="ex: 4.0"
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Upload (Go)
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            bind:value={t.paliers.uploadGB}
+                            placeholder="ex: 2048"
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Download (Go)
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            bind:value={t.paliers.downloadGB}
+                            placeholder="ex: 2048"
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #cbd5e1;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Buffer (Go)
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            bind:value={t.paliers.bufferGB}
+                            placeholder="ex: 1024"
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Points / Karma
+                          <input
+                            type="number"
+                            step="500"
+                            min="0"
+                            bind:value={t.paliers.points}
+                            placeholder="ex: 25000"
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #facc15;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Astra
+                          <input
+                            type="number"
+                            step="50"
+                            min="0"
+                            bind:value={t.paliers.astra}
+                            placeholder="ex: 1000"
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #c084fc;"
+                          />
+                        </label>
+                      </div>
+                      <div class="col-span-2 sm:col-span-2">
+                        <label class="block text-[10px] text-slate-400">
+                          Seeds
+                          <input
+                            type="number"
+                            step="10"
+                            min="0"
+                            bind:value={t.paliers.seeds}
+                            placeholder="ex: 150"
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
     </div>
 
     <!-- Action buttons -->
