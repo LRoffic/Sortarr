@@ -1,6 +1,7 @@
 <script>
   import { untrack, onMount } from 'svelte';
   import { getTrackerLogo, getTrackerInitials } from '$lib/logos.js';
+  import { markdownToHtml } from '$lib/markdown.js';
 
   let { data } = $props();
   let failedLogos = $state({});
@@ -10,6 +11,25 @@
   let isCheckingUpdate = $state(false);
   let isInstallingUpdate = $state(false);
   let updateResult = $state(null);
+  let selectedReleaseTag = $state(null);
+  let showPreviousVersions = $state(false);
+
+  // Release sélectionnée pour affichage des notes (par défaut la dernière)
+  let activeRelease = $derived.by(() => {
+    if (!updateStatus) return null;
+    if (selectedReleaseTag && Array.isArray(updateStatus.releases)) {
+      const found = updateStatus.releases.find((r) => r.tagName === selectedReleaseTag);
+      if (found) return found;
+    }
+    return {
+      tagName: updateStatus.tagName,
+      name: updateStatus.releaseName || updateStatus.tagName,
+      releaseNotes: updateStatus.releaseNotes || '',
+      publishedAt: updateStatus.publishedAt,
+      htmlUrl: updateStatus.htmlUrl,
+      isLatest: true
+    };
+  });
 
   async function checkUpdates(force = false) {
     isCheckingUpdate = true;
@@ -1874,13 +1894,91 @@
           </div>
         {/if}
 
-        {#if updateStatus.releaseNotes && !updateStatus.noReleasesYet}
-          <div class="space-y-1">
-            <div class="text-[11px] font-semibold" style="color: var(--text-muted);">
-              📋 Notes de version ({updateStatus.releaseName || updateStatus.tagName}) :
+        {#if activeRelease && activeRelease.releaseNotes && !updateStatus.noReleasesYet}
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between flex-wrap gap-2 text-[11px]" style="color: var(--text-muted);">
+              <span class="font-semibold flex items-center gap-1.5">
+                📋 Notes de version — <span class="font-bold text-slate-200">{activeRelease.name || activeRelease.tagName}</span>
+                {#if activeRelease.tagName === updateStatus.tagName}
+                  <span class="px-1.5 py-0.2 rounded text-[10px]" style="background: #22c55e22; color: #4ade80;">Dernière release</span>
+                {/if}
+              </span>
+              {#if selectedReleaseTag && selectedReleaseTag !== updateStatus.tagName}
+                <button
+                  type="button"
+                  onclick={() => { selectedReleaseTag = updateStatus.tagName; }}
+                  class="text-[10px] underline cursor-pointer hover:text-white"
+                  style="color: #a78bfa;"
+                >
+                  ↺ Revenir à la dernière version ({updateStatus.tagName})
+                </button>
+              {/if}
             </div>
-            <pre class="p-2.5 rounded text-[11px] font-mono whitespace-pre-wrap max-h-40 overflow-y-auto"
-                 style="background: var(--bg-secondary); color: #cbd5e1; border: 1px solid var(--border);">{updateStatus.releaseNotes}</pre>
+
+            <!-- Rendu HTML de la release note convertie depuis le Markdown -->
+            <div class="p-3.5 rounded-lg text-xs max-h-80 overflow-y-auto space-y-2 leading-relaxed"
+                 style="background: var(--bg-secondary); border: 1px solid var(--border); color: #cbd5e1;">
+              {@html markdownToHtml(activeRelease.releaseNotes)}
+            </div>
+          </div>
+        {/if}
+
+        <!-- Lien et liste déroulante pour consulter l'historique des versions précédentes -->
+        {#if updateStatus.releases && updateStatus.releases.length > 0}
+          <div class="pt-1">
+            <button
+              type="button"
+              onclick={() => { showPreviousVersions = !showPreviousVersions; }}
+              class="flex items-center gap-1.5 text-xs font-semibold cursor-pointer py-1 transition-colors hover:opacity-80"
+              style="color: #a78bfa;"
+            >
+              <span>{showPreviousVersions ? '▾' : '▸'}</span>
+              <span>📜 Consulter l'historique des versions ({updateStatus.releases.length})</span>
+            </button>
+
+            {#if showPreviousVersions}
+              <div class="mt-2 p-3 rounded-lg space-y-3" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <label class="block text-xs font-medium" style="color: var(--text-muted);" for="release-select">
+                    Sélectionner une version dans la liste déroulante :
+                  </label>
+                  <span class="text-[11px]" style="color: var(--text-muted);">
+                    {updateStatus.releases.length} version(s) répertoriée(s)
+                  </span>
+                </div>
+
+                <!-- Liste déroulante (select) -->
+                <select
+                  id="release-select"
+                  bind:value={selectedReleaseTag}
+                  class="w-full px-3 py-2 rounded-lg text-xs font-mono cursor-pointer"
+                  style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+                >
+                  {#each updateStatus.releases as rel}
+                    <option value={rel.tagName}>
+                      {rel.tagName} — {rel.name} {rel.publishedAt ? `(${new Date(rel.publishedAt).toLocaleDateString('fr-FR')})` : ''} {rel.tagName === updateStatus.tagName ? '★ (Dernière)' : ''}
+                    </option>
+                  {/each}
+                </select>
+
+                <!-- Accès rapide direct par boutons badges -->
+                <div class="flex items-center gap-1.5 flex-wrap pt-1">
+                  <span class="text-[11px]" style="color: var(--text-muted);">Accès rapide :</span>
+                  {#each updateStatus.releases as rel}
+                    <button
+                      type="button"
+                      onclick={() => { selectedReleaseTag = rel.tagName; }}
+                      class="px-2 py-0.5 rounded text-[11px] font-mono font-medium transition-all cursor-pointer"
+                      style="background: {(selectedReleaseTag || updateStatus.tagName) === rel.tagName ? 'var(--accent)' : 'var(--bg-card)'};
+                             color: {(selectedReleaseTag || updateStatus.tagName) === rel.tagName ? '#ffffff' : '#cbd5e1'};
+                             border: 1px solid {(selectedReleaseTag || updateStatus.tagName) === rel.tagName ? 'var(--accent)' : 'var(--border)'};"
+                    >
+                      {rel.tagName}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </div>
         {/if}
 

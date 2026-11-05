@@ -160,15 +160,17 @@ export async function checkForUpdates({ force = false } = {}) {
   }
 
   try {
-    // 1. Cherche la dernière release stable (/releases/latest)
-    let relRes = await fetchGithubJson(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
-    let release = relRes.ok ? relRes.data : null;
+    // 1. Récupère la liste des releases GitHub (jusqu'à 30) pour l'historique complet
+    let listRes = await fetchGithubJson(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=30`);
+    let allReleases = (listRes.ok && Array.isArray(listRes.data)) ? listRes.data : [];
 
-    // 2. Fallback sur la liste complète des releases (inclut pre-releases si aucune release stable)
-    if (!release || !release.tag_name) {
-      const listRes = await fetchGithubJson(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=5`);
-      if (listRes.ok && Array.isArray(listRes.data) && listRes.data.length > 0) {
-        release = listRes.data[0];
+    // 2. Cherche la dernière release stable
+    let release = allReleases.find((r) => !r.draft && !r.prerelease) || allReleases[0];
+    if (!release) {
+      let relRes = await fetchGithubJson(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+      if (relRes.ok && relRes.data?.tag_name) {
+        release = relRes.data;
+        allReleases = [release];
       }
     }
 
@@ -186,6 +188,7 @@ export async function checkForUpdates({ force = false } = {}) {
         releaseNotes: 'Aucune release publiée sur le dépôt GitHub pour le moment.',
         publishedAt: null,
         htmlUrl: `${GITHUB_REPO_URL}/releases`,
+        releases: [],
         checkedAt: new Date().toISOString()
       };
       updateCache = { checkedAt: Date.now(), data: noReleaseData };
@@ -194,6 +197,17 @@ export async function checkForUpdates({ force = false } = {}) {
 
     const latestVersion = String(release.tag_name).replace(/^v/i, '');
     const updateAvailable = compareVersions(currentVersion, latestVersion) > 0;
+
+    const releasesList = allReleases.map((r) => ({
+      tagName: r.tag_name,
+      version: String(r.tag_name).replace(/^v/i, ''),
+      name: r.name || r.tag_name,
+      releaseNotes: r.body || '',
+      publishedAt: r.published_at || r.created_at || null,
+      htmlUrl: r.html_url || `${GITHUB_REPO_URL}/releases/tag/${r.tag_name}`,
+      isCurrent: String(r.tag_name).replace(/^v/i, '') === currentVersion,
+      isLatest: String(r.tag_name) === String(release.tag_name)
+    }));
 
     const result = {
       ok: true,
@@ -210,6 +224,7 @@ export async function checkForUpdates({ force = false } = {}) {
       htmlUrl: release.html_url || `${GITHUB_REPO_URL}/releases/tag/${release.tag_name}`,
       tarballUrl: release.tarball_url || `https://api.github.com/repos/${GITHUB_REPO}/tarball/${release.tag_name}`,
       zipballUrl: release.zipball_url || `https://api.github.com/repos/${GITHUB_REPO}/zipball/${release.tag_name}`,
+      releases: releasesList,
       checkedAt: new Date().toISOString()
     };
 
