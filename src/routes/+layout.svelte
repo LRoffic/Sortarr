@@ -1,6 +1,6 @@
 <script>
   import '../app.css';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { onMount } from 'svelte';
 
   let { data, children } = $props();
@@ -51,17 +51,17 @@
         <div class="flex items-center gap-1.5 flex-wrap">
           <a href="/" 
              class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-             style="{$page.url.pathname === '/' ? 'background: var(--accent); color: white;' : 'color: var(--text-muted);'}">
+             style="{page.url.pathname === '/' ? 'background: var(--accent); color: white;' : 'color: var(--text-muted);'}">
             Indexeurs
           </a>
           <a href="/stats" 
              class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-             style="{$page.url.pathname.startsWith('/stats') ? 'background: var(--accent); color: white;' : 'color: var(--text-muted);'}">
+             style="{page.url.pathname.startsWith('/stats') ? 'background: var(--accent); color: white;' : 'color: var(--text-muted);'}">
             📈 Statistiques
           </a>
           <a href="/settings" 
              class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-             style="{$page.url.pathname === '/settings' ? 'background: var(--accent); color: white;' : 'color: var(--text-muted);'}">
+             style="{page.url.pathname === '/settings' ? 'background: var(--accent); color: white;' : 'color: var(--text-muted);'}">
             ⚙️ Configuration
           </a>
           <button
