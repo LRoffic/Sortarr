@@ -9,15 +9,14 @@
     "start": "node build/index.js"
   },
   "dependencies": {
-    "@sveltejs/adapter-node": "^5.2.9",
-    "@sveltejs/kit": "^2.9.0",
-    "@sveltejs/vite-plugin-svelte": "^5.0.0",
-    "@tailwindcss/vite": "^4.0.0",
-    "svelte": "^5.0.0",
-    "svelte-dnd-action": "^0.9.46",
-    "tailwindcss": "^4.0.0",
-    "vite": "^6.0.0"
+    "@sveltejs/adapter-node": "^6.0.1",
+    "@sveltejs/kit": "^3.1.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tailwindcss/vite": "^4.3.4",
+    "svelte": "^5.57.3",
+    "svelte-dnd-action": "^0.9.80",
+    "tailwindcss": "^4.3.4",
+    "vite": "^8.3.5"
   },
-  "devDependencies": {},
   "type": "module"
 }
