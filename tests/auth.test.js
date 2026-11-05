@@ -8,7 +8,13 @@ import {
   clearFailedAttempts,
   createPending2FAToken,
   verifyPending2FAToken,
-  generateBuiltinCaptcha
+  generateBuiltinCaptcha,
+  setSessionCookie,
+  createSessionToken,
+  verifySessionToken,
+  createUser,
+  changePassword,
+  SESSION_COOKIE
 } from '../src/lib/auth.server.js';
 
 describe('auth & security', () => {
@@ -58,6 +64,47 @@ describe('auth & security', () => {
       // Clearing resets
       clearFailedAttempts(testIp);
       expect(() => checkRateLimit(testIp)).not.toThrow();
+    });
+  });
+
+  describe('Session Cookies & Security', () => {
+    it('sets secure cookie flag when request is HTTPS', () => {
+      let setCalls = [];
+      const mockCookies = {
+        set: (name, val, opts) => setCalls.push({ name, val, opts })
+      };
+
+      // HTTP request
+      setSessionCookie(mockCookies, 'token-123', { headers: new Map() });
+      expect(setCalls[0].opts.secure).toBe(false);
+      expect(setCalls[0].opts.httpOnly).toBe(true);
+      expect(setCalls[0].opts.sameSite).toBe('lax');
+
+      // HTTPS via x-forwarded-proto
+      setSessionCookie(mockCookies, 'token-456', {
+        headers: { get: (h) => (h === 'x-forwarded-proto' ? 'https' : null) }
+      });
+      expect(setCalls[1].opts.secure).toBe(true);
+    });
+
+    it('revokes previous session tokens when password is changed', () => {
+      const testUser = 'user_sec_' + Date.now();
+      createUser(testUser, 'InitialPassword123!');
+
+      // Create session with current tokenVersion
+      const oldSessionToken = createSessionToken(testUser);
+      expect(verifySessionToken(oldSessionToken)).not.toBeNull();
+
+      // Change password
+      changePassword(testUser, 'InitialPassword123!', 'NewPassword456#');
+
+      // Old session token MUST now be invalidated
+      expect(verifySessionToken(oldSessionToken)).toBeNull();
+
+      // Newly minted session token works
+      const newSessionToken = createSessionToken(testUser);
+      expect(verifySessionToken(newSessionToken)).not.toBeNull();
+      expect(verifySessionToken(newSessionToken).username).toBe(testUser);
     });
   });
 

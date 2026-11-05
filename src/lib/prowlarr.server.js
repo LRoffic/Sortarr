@@ -58,10 +58,16 @@ export async function updateIndexerPriority(prowlarrUrl, apiKey, indexer) {
 }
 
 export async function testConnection(prowlarrUrl, apiKey) {
-  const url = `${prowlarrUrl}/api/v1/system/status`;
+  const cleanUrl = String(prowlarrUrl || '').trim().replace(/\/+$/, '');
+  if (!cleanUrl) return { ok: false, error: "L'URL est requise" };
+  if (!/^https?:\/\//i.test(cleanUrl)) {
+    return { ok: false, error: "L'URL doit commencer par http:// ou https://" };
+  }
+  const url = `${cleanUrl}/api/v1/system/status`;
   try {
     const res = await fetch(url, {
-      headers: { 'X-Api-Key': apiKey }
+      headers: { 'X-Api-Key': String(apiKey || '').trim() },
+      signal: AbortSignal.timeout(10000)
     });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
     const data = await res.json();

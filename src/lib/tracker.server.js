@@ -273,6 +273,9 @@ async function tracedFetch(url, options = {}) {
 }
 
 async function fetchJson(url, headers = {}) {
+  if (!/^https?:\/\//i.test(String(url || ''))) {
+    throw new Error('Protocole non autorisé : seuls http:// et https:// sont acceptés');
+  }
   const reqHeaders = { 'User-Agent': DEFAULT_UA, Accept: 'application/json', ...headers };
   let res;
   try {
@@ -297,6 +300,9 @@ async function fetchJson(url, headers = {}) {
 
 /** Requête HTTP tolérante aux erreurs TLS/certificats pour pages HTML ou textes bruts */
 async function fetchHtml(url, options = {}) {
+  if (!/^https?:\/\//i.test(String(url || ''))) {
+    throw new Error('Protocole non autorisé : seuls http:// et https:// sont acceptés');
+  }
   const reqHeaders = { 'User-Agent': DEFAULT_UA, ...options.headers };
   try {
     return await tracedFetch(url, {
@@ -1284,6 +1290,7 @@ export async function testApiRatioConnection(apiRatioUrl) {
   try {
     const base = String(apiRatioUrl || '').trim().replace(/\/+$/, '').replace(/\/ratios$/, '');
     if (!base) throw new Error('URL du service api-ratio requise');
+    if (!/^https?:\/\//i.test(base)) throw new Error("L'URL doit commencer par http:// ou https://");
     const data = await fetchJson(`${base}/ratios`, {});
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
       throw new Error('Réponse invalide reçue de /ratios (objet JSON attendu)');

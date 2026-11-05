@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { hasUsers, createUser, createSessionToken, SESSION_COOKIE } from '$lib/auth.server.js';
+import { hasUsers, createUser, createSessionToken, setSessionCookie } from '$lib/auth.server.js';
 import { registerSchema, validateForm } from '$lib/validation.js';
 
 export async function POST({ request, cookies }) {
@@ -16,13 +16,7 @@ export async function POST({ request, cookies }) {
     const { username, password } = validation.data;
     const user = createUser(username, password);
     const token = createSessionToken(user.username);
-    cookies.set(SESSION_COOKIE, token, {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: false,
-      maxAge: 30 * 24 * 3600
-    });
+    setSessionCookie(cookies, token, request);
     return json({ ok: true, username: user.username });
   } catch (e) {
     return json({ ok: false, error: e.message }, { status: 400 });

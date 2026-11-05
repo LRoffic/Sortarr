@@ -7,6 +7,33 @@ const USERS_FILE = join(DATA_DIR, 'data_auth.json');
 const LEGACY_USERS_FILE = join(DATA_DIR, 'users.json');
 export const SESSION_COOKIE = 'sortarr_session';
 
+/**
+ * Configure le cookie de session HTTPOnly avec détection automatique de HTTPS.
+ */
+export function setSessionCookie(cookies, token, requestOrUrl = null) {
+  let isSecure = false;
+  try {
+    if (requestOrUrl) {
+      if (typeof requestOrUrl === 'string' && requestOrUrl.startsWith('https:')) {
+        isSecure = true;
+      } else if (requestOrUrl.url) {
+        const urlStr = typeof requestOrUrl.url === 'string' ? requestOrUrl.url : requestOrUrl.url.href;
+        if (urlStr?.startsWith('https:')) isSecure = true;
+      }
+      const proto = requestOrUrl.headers?.get?.('x-forwarded-proto') || requestOrUrl.headers?.['x-forwarded-proto'];
+      if (proto === 'https') isSecure = true;
+    }
+  } catch {}
+
+  cookies.set(SESSION_COOKIE, token, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isSecure,
+    maxAge: 30 * 24 * 3600
+  });
+}
+
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 const loginAttempts = new Map(); // ip -> { count, lockedUntil }
 const usedCaptchaIds = new Set();
@@ -61,6 +88,17 @@ function saveStore(store) {
 }
 
 // ── Rate-limiting anti-bruteforce ───────────────────────────────
+function pruneStaleLoginAttempts() {
+  if (loginAttempts.size > 500) {
+    const now = Date.now();
+    for (const [k, v] of loginAttempts.entries()) {
+      if (!v.lockedUntil || now >= v.lockedUntil + 10 * 60 * 1000) {
+        loginAttempts.delete(k);
+      }
+    }
+  }
+}
+
 export function checkRateLimit(ip) {
   const key = ip || 'unknown';
   const entry = loginAttempts.get(key);
@@ -75,11 +113,15 @@ export function checkRateLimit(ip) {
 }
 
 export function recordFailedAttempt(ip) {
+  pruneStaleLoginAttempts();
   const key = ip || 'unknown';
   const entry = loginAttempts.get(key) || { count: 0, lockedUntil: 0 };
   entry.count += 1;
-  if (entry.count >= 5) {
-    entry.lockedUntil = Date.now() + 2 * 60 * 1000; // 2 min
+  // Verrouillage progressif : 15 min après 10 échecs, 2 min après 5 échecs
+  if (entry.count >= 10) {
+    entry.lockedUntil = Date.now() + 15 * 60 * 1000;
+  } else if (entry.count >= 5) {
+    entry.lockedUntil = Date.now() + 2 * 60 * 1000;
   }
   loginAttempts.set(key, entry);
 }
@@ -151,9 +193,13 @@ export function verifyTotpCode(secret, inputCode, window = 1) {
   if (!/^\d{6}$/.test(cleanCode) || !secret) return false;
   const secretBuf = base32ToBuffer(secret);
   const currentStep = Math.floor(Date.now() / 30000);
+  const cleanBuf = Buffer.from(cleanCode);
   for (let w = -window; w <= window; w++) {
     const expected = computeHotp(secretBuf, currentStep + w);
-    if (expected === cleanCode) return true;
+    const expBuf = Buffer.from(expected);
+    if (expBuf.length === cleanBuf.length && crypto.timingSafeEqual(expBuf, cleanBuf)) {
+      return true;
+    }
   }
   return false;
 }
@@ -234,6 +280,7 @@ export function createUser(username, password) {
     totpSecret: '',
     pendingTotpSecret: '',
     backupCodes: [],
+    tokenVersion: 1,
     createdAt: new Date().toISOString()
   });
   saveStore(store);
@@ -273,6 +320,8 @@ export function changePassword(username, currentPassword, newPassword) {
   const passwordHash = crypto.scryptSync(rawNew, salt, 64).toString('hex');
   user.salt = salt;
   user.passwordHash = passwordHash;
+  // Révoque immédiatement toutes les sessions actives sur d'autres appareils
+  user.tokenVersion = (user.tokenVersion || 1) + 1;
   saveStore(store);
   return { ok: true };
 }
@@ -325,6 +374,7 @@ export function disableTotp(username, codeOrPassword) {
   user.totpSecret = '';
   user.pendingTotpSecret = '';
   user.backupCodes = [];
+  user.tokenVersion = (user.tokenVersion || 1) + 1;
   saveStore(store);
 }
 
@@ -372,9 +422,13 @@ function verifySignedPayload(token) {
 }
 
 export function createSessionToken(username) {
+  const store = loadStore();
+  const user = store.users.find((u) => u.username.toLowerCase() === String(username || '').toLowerCase());
+  const v = user?.tokenVersion || 1;
   return signPayload({
     t: 'session',
     u: username,
+    v,
     exp: Date.now() + 30 * 24 * 3600 * 1000
   });
 }
@@ -385,6 +439,11 @@ export function verifySessionToken(token) {
   const store = loadStore();
   const exists = store.users.find((u) => u.username.toLowerCase() === String(data.u).toLowerCase());
   if (!exists) return null;
+  // Vérifie la version de session pour invalider les anciens tokens après changement de mot de passe
+  const currentVersion = exists.tokenVersion || 1;
+  if (data.v !== undefined && data.v !== currentVersion) {
+    return null;
+  }
   return { username: exists.username, totpEnabled: !!exists.totpEnabled };
 }
 

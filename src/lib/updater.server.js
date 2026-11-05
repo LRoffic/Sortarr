@@ -265,6 +265,15 @@ export async function performUpdate() {
 
   const targetTag = check.tagName;
   const targetVersion = check.latestVersion;
+
+  // Validation de sécurité stricte pour prévenir toute injection dans les commandes shell
+  if (!/^[a-zA-Z0-9._-]+$/.test(targetTag) || targetTag.startsWith('-')) {
+    throw new Error('Nom de tag de release invalide ou non sécurisé');
+  }
+  if (!/^[a-zA-Z0-9._-]+$/.test(targetVersion)) {
+    throw new Error('Format de numéro de version invalide');
+  }
+
   log(`Release cible détectée : ${targetTag} (v${targetVersion})`);
 
   const rootDir = process.cwd();
