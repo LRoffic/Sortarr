@@ -6,6 +6,30 @@ Contrairement à Prowlarr qui ne connaît pas votre ratio ni l'état du Freeleec
 
 ---
 
+## 📸 Aperçu
+
+### 1. Tableau de bord principal & Grille des devises
+*Supervision en temps réel de l'état de l'auto-tri, actions rapides et vue synthétique des points, jetons, karma, crédits et seeds de vos trackers privés :*
+
+![Tableau de bord principal - Gestion des indexeurs](https://i.imgur.com/O0pO3nz.png)
+
+### 2. Gestion des priorités Prowlarr & Ratios réels
+*Liste ordonnée de vos indexeurs avec affichage des ratios, upload, download, buffers, seeds actifs et badges d'état (FL, PAUSE, Privé/Semi-privé) :*
+
+![Priorités Prowlarr et statistiques des indexeurs](https://i.imgur.com/5VXiMN8.png)
+
+### 3. Statistiques & Variations journalières
+*Suivi jour par jour des ratios et devises avec calcul instantané des gains et variations du jour (`+X auj.`) :*
+
+![Statistiques quotidiennes des ratios et devises](https://i.imgur.com/dfpD6YH.png)
+
+### 4. Graphiques d'évolution détaillés par tracker
+*Courbes SVG interactives d'évolution (Ratio / Points / Karma / Astra), KPIs de buffer net et historique journalier des variations :*
+
+![Graphiques d'évolution par tracker](https://i.imgur.com/Tvd3ICB.png)
+
+---
+
 ## ✨ Fonctionnalités principales
 
 - 🎯 **Gestion des priorités Prowlarr (Drag & Drop + Auto-tri)** :
@@ -27,10 +51,10 @@ Contrairement à Prowlarr qui ne connaît pas votre ratio ni l'état du Freeleec
 - ⏱️ **Planificateur en arrière-plan (Auto-Sort Scheduler)** :
   - Exécute automatiquement la récupération des statistiques, la mise à jour des priorités Prowlarr et la synchronisation des tags de protection à intervalle régulier, même en l'absence d'utilisateur connecté.
 - 🪙 **Tableau de bord des Points, Jetons, Karma, Zen & Crédits** :
-  - Visibilité complète sur la page d'accueil de toutes les monnaies et bonus de vos trackers (`KARMA / ASTRA`, `JETONS` V3X + gain `/h` + jetons FL, `ZEN` C411 + niveau, `CRÉDITS` TR4KER & Draupnirr, `CRAZY BONUS` Crazy Spirits, `SEEDBONUS` UNIT3D/G3MINI/TeamFlix, `BONUS` Nostradamus & SpeedApp) ainsi que du nombre de torrents en **Seed**.
+  - Visibilité complète sur la page d'accueil de toutes les monnaies et bonus de vos trackers (**Karma & Astras** pour AstraTorrent, `JETONS` V3X + gain `/h` + jetons FL, `ZEN` C411 + niveau, `CRÉDITS` TR4KER & Draupnirr, `CRAZY BONUS` Crazy Spirits, `SEEDBONUS` UNIT3D/G3MINI/TeamFlix, `BONUS` Nostradamus & SpeedApp) ainsi que du nombre de torrents en **Seed**.
 - 📈 **Statistiques quotidiennes des ratios (`/stats`)** :
-  - Enregistrement automatique jour par jour du ratio, de l'upload, du download, du buffer et des points pour chaque tracker (jusqu'à 365 jours d'historique).
-  - Courbes d'évolution SVG, calcul des variations journalières (`Δ Ratio / j`, `Δ Upload / j`, `Δ Download / j`), vue par tracker, journal quotidien par date et matrice comparative.
+  - Enregistrement automatique jour par jour du ratio, de l'upload, du download, du buffer et des devises pour chaque tracker (jusqu'à 365 jours d'historique).
+  - Courbes d'évolution SVG interactives, bascule de vue indépendante par carte de tracker (Ratio / Points / Karma / Astra), calcul des variations journalières (`Δ Ratio / j`, `Δ Upload / j`, `Δ Download / j`), journal quotidien par date et matrice comparative.
 - 💾 **Sauvegarde automatique en temps réel de la configuration** :
   - Chaque modification dans les paramètres est automatiquement synchronisée et enregistrée avec un indicateur visuel en direct (`💾 Sauvegardé`).
 - 🔐 **Sécurité avancée & Captcha personnalisable** :
