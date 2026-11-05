@@ -1,10 +1,15 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
+import crypto from 'crypto';
 
 const DATA_DIR = join(process.cwd(), 'data');
 const CONFIG_FILE = join(DATA_DIR, 'config.json');
 
 const defaultConfig = {
+  // Identifiant unique anonyme d'instance (UUID v4)
+  instanceId: '',
+  // Télémétrie anonyme
+  telemetryEnabled: true,
   prowlarrUrl: 'http://localhost:9696',
   prowlarrApiKey: '',
   autoRefreshInterval: 20,
@@ -34,15 +39,27 @@ function ensureDataDir() {
 
 export function getConfig() {
   ensureDataDir();
+  let cfg;
   if (!existsSync(CONFIG_FILE)) {
-    writeFileSync(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2));
-    return defaultConfig;
+    cfg = { ...defaultConfig, instanceId: crypto.randomUUID() };
+    writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+    return cfg;
   }
   try {
-    return { ...defaultConfig, ...JSON.parse(readFileSync(CONFIG_FILE, 'utf-8')) };
+    cfg = { ...defaultConfig, ...JSON.parse(readFileSync(CONFIG_FILE, 'utf-8')) };
   } catch {
-    return defaultConfig;
+    cfg = { ...defaultConfig };
   }
+
+  // Génère et sauvegarde aléatoirement un instanceId unique si inexistant
+  if (!cfg.instanceId || typeof cfg.instanceId !== 'string') {
+    cfg.instanceId = cfg.instance_id || crypto.randomUUID();
+    try {
+      writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+    } catch {}
+  }
+
+  return cfg;
 }
 
 export function saveConfig(config) {

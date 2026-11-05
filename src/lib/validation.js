@@ -177,6 +177,10 @@ export const settingsSchema = yup.object({
       return /^https?:\/\//i.test(v);
     }),
   sonarrApiKey: yup.string().trim().nullable().optional(),
+  apiRatioUrl: yup.string().trim().nullable().optional(),
+  instanceId: yup.string().trim().nullable().optional(),
+  instance_id: yup.string().trim().nullable().optional(),
+  telemetryEnabled: yup.boolean().default(true),
   trackers: yup.object().optional(),
   skipTest: yup.boolean().optional()
 });

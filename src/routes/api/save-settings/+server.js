@@ -108,7 +108,8 @@ export async function POST({ request }) {
       sonarrUrl,
       sonarrApiKey,
       trackers,
-      apiRatioUrl: String(body.apiRatioUrl ?? '').trim().replace(/\/+$/, '')
+      apiRatioUrl: String(body.apiRatioUrl ?? '').trim().replace(/\/+$/, ''),
+      telemetryEnabled: body.telemetryEnabled !== false
     });
   } catch (e) {
     return json({ ok: false, error: `Écriture de la configuration impossible : ${e.message}` }, { status: 500 });

@@ -8,6 +8,7 @@ import https from 'https';
 import { exec, execSync } from 'child_process';
 import { promisify } from 'util';
 import { getConfig, saveConfig } from './config.server.js';
+import { sendTelemetryPing } from './telemetry.server.js';
 
 const execAsync = promisify(exec);
 
@@ -204,6 +205,9 @@ export async function checkForUpdates({ force = false } = {}) {
   }
 
   try {
+    // Ping de télémétrie anonyme lors de la vérification de mise à jour sur GitHub
+    sendTelemetryPing({ isTest: false }).catch(() => {});
+
     // 1. Récupère la liste des releases GitHub (jusqu'à 30) pour l'historique complet
     let listRes = await fetchGithubJson(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=30`);
     let allReleases = (listRes.ok && Array.isArray(listRes.data)) ? listRes.data : [];

@@ -129,6 +129,8 @@
   let radarrApiKey = $state(untrack(() => data.config.radarrApiKey ?? ''));
   let sonarrUrl = $state(untrack(() => data.config.sonarrUrl ?? ''));
   let sonarrApiKey = $state(untrack(() => data.config.sonarrApiKey ?? ''));
+  let telemetryEnabled = $state(untrack(() => data.config.telemetryEnabled !== false));
+  let instanceId = $state(untrack(() => data.config.instanceId ?? ''));
 
   let isTestingRadarr = $state(false);
   let radarrTestResult = $state(null);
@@ -218,6 +220,8 @@
       radarrApiKey,
       sonarrUrl,
       sonarrApiKey,
+      telemetryEnabled,
+      instanceId,
       trackers: $state.snapshot(trackers)
     };
 
@@ -265,6 +269,23 @@
       apiRatioTestResult = { ok: false, error: e.message };
     } finally {
       isTestingApiRatio = false;
+    }
+  }
+
+  let isTestingTelemetry = $state(false);
+  let telemetryTestResult = $state(null);
+
+  async function testTelemetry() {
+    isTestingTelemetry = true;
+    telemetryTestResult = null;
+    try {
+      const res = await fetch('/api/telemetry/test', { method: 'POST' });
+      const r = await res.json();
+      telemetryTestResult = r;
+    } catch (e) {
+      telemetryTestResult = { ok: false, error: e.message };
+    } finally {
+      isTestingTelemetry = false;
     }
   }
 
@@ -657,6 +678,8 @@
       radarrApiKey,
       sonarrUrl,
       sonarrApiKey,
+      telemetryEnabled,
+      instanceId,
       trackers: $state.snapshot(trackers)
     };
 
@@ -2178,6 +2201,113 @@
               {/each}
             </div>
           </details>
+        {/if}
+      </div>
+    {/if}
+  </div>
+
+  <!-- Télémétrie anonyme -->
+  <div id="telemetry" class="mt-8 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+    <div class="flex items-start justify-between gap-3 flex-wrap">
+      <div>
+        <div class="flex items-center gap-2">
+          <h3 class="text-sm font-semibold flex items-center gap-2">
+            <span>📡</span>
+            <span>Télémétrie anonyme</span>
+          </h3>
+          <span
+            class="px-2 py-0.5 rounded-full text-[11px] font-semibold"
+            style="background: {telemetryEnabled ? '#22c55e22' : '#ef444422'}; color: {telemetryEnabled ? '#4ade80' : '#f87171'}; border: 1px solid {telemetryEnabled ? '#22c55e44' : '#ef444444'};"
+          >
+            {telemetryEnabled ? 'Collecte active' : 'Désactivée'}
+          </span>
+        </div>
+        <p class="text-xs mt-0.5" style="color: var(--text-muted);">
+          Transmet un ping anonyme lors de la recherche de mises à jour pour aider au suivi global des versions et environnements.
+        </p>
+      </div>
+      <button
+        type="button"
+        onclick={testTelemetry}
+        disabled={isTestingTelemetry}
+        class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shrink-0 transition-colors hover:bg-slate-800"
+        style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+        data-tooltip="Envoie un ping de test (is_test: true) vers tele-sortarr.lripsum.net sans impacter les statistiques"
+      >
+        {isTestingTelemetry ? '⏳ Test en cours...' : '🧪 Tester la télémétrie'}
+      </button>
+    </div>
+
+    <!-- Switch d'activation / désactivation -->
+    <div class="p-3 rounded-lg flex items-center justify-between gap-4 flex-wrap" style="background: var(--bg-card); border: 1px solid var(--border);">
+      <div class="space-y-0.5">
+        <label for="telemetry-switch" class="text-xs font-semibold text-slate-200 cursor-pointer">
+          Autoriser l'envoi de la télémétrie anonyme
+        </label>
+        <p class="text-[11px]" style="color: var(--text-muted);">
+          Désactivez cette option si vous souhaitez bloquer tout envoi de télémétrie vers <code class="text-slate-300">tele-sortarr.lripsum.net</code>.
+        </p>
+      </div>
+      <input
+        type="checkbox"
+        id="telemetry-switch"
+        bind:checked={telemetryEnabled}
+        class="w-5 h-5 rounded accent-purple-600 cursor-pointer"
+      />
+    </div>
+
+    <!-- Identifiant d'instance et détails de confidentialité -->
+    <div class="p-3 rounded-lg space-y-3 text-xs" style="background: var(--bg-card); border: 1px solid var(--border);">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <span style="color: var(--text-muted);">Identifiant d'instance unique (anonyme) :</span>
+        <code class="font-mono text-[11px] px-2 py-1 rounded bg-slate-900 text-purple-300 select-all border border-purple-900/40">
+          {instanceId || 'Génération automatique...'}
+        </code>
+      </div>
+
+      <!-- Détail des données envoyées (Garantie de confidentialité) -->
+      <div class="pt-2 border-t text-[11px] space-y-2" style="border-color: var(--border);">
+        <div class="flex items-center gap-1.5 font-semibold text-slate-300">
+          <span>🔒</span>
+          <span>Données transmises et garantie d'anonymat :</span>
+        </div>
+        <p style="color: var(--text-muted);">
+          Cette transmission est <strong>100% anonyme</strong>. Aucune adresse IP, nom d'hôte, URL Prowlarr/Arr, clé API ou donnée personnelle n'est stockée ni transmise.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+          <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+            <span class="font-mono text-purple-400 font-semibold">instance_id</span> : Identifiant UUID unique généré aléatoirement une seule fois à l'installation.
+          </div>
+          <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+            <span class="font-mono text-purple-400 font-semibold">version</span> : Version installée de Sortarr.
+          </div>
+          <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+            <span class="font-mono text-purple-400 font-semibold">os & arch</span> : Système d'exploitation (linux, windows, macos) et architecture CPU (x64, arm64).
+          </div>
+          <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+            <span class="font-mono text-purple-400 font-semibold">is_docker & branch</span> : Détection d'environnement conteneur Docker et branche de déploiement (main).
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Résultat du test de télémétrie -->
+    {#if telemetryTestResult}
+      <div class="rounded-lg p-3 space-y-1.5 text-xs"
+           style="background: {telemetryTestResult.ok ? '#22c55e22' : '#ef444422'}; border: 1px solid {telemetryTestResult.ok ? '#22c55e' : '#ef4444'}; color: {telemetryTestResult.ok ? '#4ade80' : '#f87171'};">
+        <div class="font-semibold flex items-center gap-1.5">
+          <span>{telemetryTestResult.ok ? '✅' : '❌'}</span>
+          <span>{telemetryTestResult.ok ? 'Communication réussie avec le serveur de télémétrie Sortarr' : `Échec de communication : ${telemetryTestResult.error || 'Erreur inconnue'}`}</span>
+        </div>
+        {#if telemetryTestResult.data?.message}
+          <div class="text-[11px] text-slate-300">
+            {telemetryTestResult.data.message}
+          </div>
+        {/if}
+        {#if telemetryTestResult.data?.privacy}
+          <div class="text-[10px] text-slate-400">
+            Confidentialité confirmée par le serveur : {telemetryTestResult.data.privacy}
+          </div>
         {/if}
       </div>
     {/if}
