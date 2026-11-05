@@ -360,7 +360,7 @@
             <div
               class="h-1 w-full rounded-full overflow-hidden my-0.5 cursor-help"
               style="background: rgba(255,255,255,0.06);"
-              title={`${isAstra ? 'Karma' : ptsLabel} : ${fmtPoints(pts)} / 25 000 (${Math.min(100, Math.round(((pts ?? 0) / 25000) * 100))}% du palier)`}
+              title={`${isAstra ? 'Karma' : label} : ${fmtPoints(pts)} / 25 000 (${Math.min(100, Math.round(((pts ?? 0) / 25000) * 100))}% du palier)`}
             >
               <div
                 class="h-full rounded-full stat-bar-grow-x"
