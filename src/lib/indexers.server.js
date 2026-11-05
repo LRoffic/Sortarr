@@ -6,6 +6,9 @@ import { recordDailyStats, getLatestRecordedStats } from './history.server.js';
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const cache = new Map(); // indexerId -> { at, key, stats }
 
+let lastKnownTagMap = new Map();
+let lastKnownNoArrTagId = null;
+
 /** Indexeurs Prowlarr + stats réelles des trackers configurés. */
 export async function getEnrichedIndexers({ force = false } = {}) {
   const config = getConfig();
@@ -15,15 +18,17 @@ export async function getEnrichedIndexers({ force = false } = {}) {
   ]);
   indexers.sort((a, b) => (a.priority ?? 50) - (b.priority ?? 50));
 
-  const tagMap = new Map();
-  let noArrTagId = null;
+  const tagMap = new Map(lastKnownTagMap);
+  let noArrTagId = lastKnownNoArrTagId;
   const configuredTag = String(config.taggingTag || 'no-arr').trim().toLowerCase();
-  if (Array.isArray(tags)) {
+  if (Array.isArray(tags) && tags.length > 0) {
     for (const t of tags) {
       if (t && t.id) {
         tagMap.set(t.id, t.label);
+        lastKnownTagMap.set(t.id, t.label);
         if (String(t.label || '').trim().toLowerCase() === configuredTag) {
           noArrTagId = t.id;
+          lastKnownNoArrTagId = t.id;
         }
       }
     }

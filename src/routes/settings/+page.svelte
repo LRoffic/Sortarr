@@ -361,7 +361,7 @@
   // Config par tracker (clé = id indexeur Prowlarr)
   const emptyTracker = () => ({
     enabled: false, type: 'unit3d', baseUrl: '', apiKey: '',
-    crazyUid: '', crazyPass: '', yggCfClearance: '',
+    crazyUid: '', crazyPass: '', yggCfClearance: '', manualAstra: '',
     freeleech: 'auto', manualUpGB: '', manualDownGB: '', manualSeeds: '',
     authMode: 'bearer', apiRatioKey: '', pathUp: '', pathDown: '', pathRatio: '', pathPoints: '', pathFl: ''
   });
@@ -1386,6 +1386,16 @@
                            : 'Clé API (vide = celle de Prowlarr)'
                          }
                          class="px-2 py-1.5 rounded font-mono" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
+                  {#if t.type === 'astra'}
+                    <input
+                      type="number"
+                      step="any"
+                      bind:value={t.manualAstra}
+                      placeholder="🪙 Solde d'Astra (optionnel si non exposé par l'API)"
+                      class="px-2 py-1.5 rounded col-span-2 font-mono text-xs"
+                      style="background: var(--bg-secondary); border: 1px solid #581c8766; color: #c084fc;"
+                    />
+                  {/if}
                   {#if t.type === 'custom'}
                     <select bind:value={t.authMode} class="px-2 py-1.5 rounded col-span-2" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;">
                       <option value="bearer">Auth : Authorization: Bearer</option>

@@ -94,6 +94,12 @@ export function recordDailyStats(enrichedIndexers, date = new Date()) {
     const flTokens = typeof t.flTokens === 'number' && Number.isFinite(t.flTokens)
       ? t.flTokens
       : (existing?.flTokens ?? null);
+    const astra = typeof t.astra === 'number' && Number.isFinite(t.astra)
+      ? t.astra
+      : (typeof t.flTokens === 'number' && pointsLabel === 'KARMA' ? t.flTokens : (existing?.astra ?? null));
+    const karma = typeof t.karma === 'number' && Number.isFinite(t.karma)
+      ? t.karma
+      : (pointsLabel === 'KARMA' ? seedbonus : (existing?.karma ?? null));
     const seeding = typeof t.seeding === 'number' && Number.isFinite(t.seeding)
       ? t.seeding
       : (existing?.seeding ?? null);
@@ -117,6 +123,8 @@ export function recordDailyStats(enrichedIndexers, date = new Date()) {
       pointsLabel,
       pointsPerHour,
       flTokens,
+      astra,
+      karma,
       seeding,
       leeching,
       extraBadges,
@@ -125,7 +133,9 @@ export function recordDailyStats(enrichedIndexers, date = new Date()) {
       startUploaded: existing?.startUploaded !== undefined ? existing.startUploaded : uploaded,
       startDownloaded: existing?.startDownloaded !== undefined ? existing.startDownloaded : downloaded,
       startBuffer: existing?.startBuffer !== undefined ? existing.startBuffer : buffer,
-      startSeedbonus: existing?.startSeedbonus !== undefined ? existing.startSeedbonus : seedbonus
+      startSeedbonus: existing?.startSeedbonus !== undefined ? existing.startSeedbonus : seedbonus,
+      startAstra: existing?.startAstra !== undefined ? existing.startAstra : astra,
+      startKarma: existing?.startKarma !== undefined ? existing.startKarma : karma
     };
 
     // Purge au-delà de MAX_DAYS
@@ -175,6 +185,8 @@ export function getFormattedStatsHistory(currentIndexers = []) {
       const isLastDay = i === sortedDates.length - 1;
 
       const curBonus = cur.seedbonus ?? cur.points ?? (isLastDay ? (liveTracker?.points ?? null) : null);
+      const curAstra = cur.astra ?? (isLastDay ? (liveTracker?.astra ?? liveTracker?.flTokens ?? null) : null);
+      const curKarma = cur.karma ?? (isLastDay ? (liveTracker?.karma ?? liveTracker?.points ?? null) : null);
 
       // Si pas de jour précédent, utilise la valeur de début de journée (intraday)
       const baseRatio = prev ? prev.ratio : cur.startRatio;
@@ -182,6 +194,8 @@ export function getFormattedStatsHistory(currentIndexers = []) {
       const baseDown = prev ? prev.downloaded : cur.startDownloaded;
       const baseBuf = prev ? prev.buffer : cur.startBuffer;
       const baseBonus = prev ? (prev.seedbonus ?? prev.points) : cur.startSeedbonus;
+      const baseAstra = prev ? (prev.astra ?? prev.flTokens) : cur.startAstra;
+      const baseKarma = prev ? (prev.karma ?? prev.seedbonus) : cur.startKarma;
 
       const deltaRatio =
         cur.ratio !== null && baseRatio !== null && baseRatio !== undefined
@@ -203,11 +217,21 @@ export function getFormattedStatsHistory(currentIndexers = []) {
         curBonus !== null && baseBonus !== null && baseBonus !== undefined
           ? Number((curBonus - baseBonus).toFixed(2))
           : null;
+      const deltaAstra =
+        curAstra !== null && baseAstra !== null && baseAstra !== undefined
+          ? Number((curAstra - baseAstra).toFixed(2))
+          : null;
+      const deltaKarma =
+        curKarma !== null && baseKarma !== null && baseKarma !== undefined
+          ? Number((curKarma - baseKarma).toFixed(2))
+          : null;
 
       historyAsc.push({
         ...cur,
         seedbonus: curBonus,
         points: curBonus,
+        astra: curAstra,
+        karma: curKarma,
         pointsLabel: cur.pointsLabel || liveTracker?.pointsLabel || 'POINTS',
         pointsPerHour: cur.pointsPerHour ?? (isLastDay ? (liveTracker?.pointsPerHour ?? null) : null),
         flTokens: cur.flTokens ?? (isLastDay ? (liveTracker?.flTokens ?? null) : null),
@@ -220,7 +244,9 @@ export function getFormattedStatsHistory(currentIndexers = []) {
         deltaUploaded,
         deltaDownloaded,
         deltaBuffer,
-        deltaSeedbonus
+        deltaSeedbonus,
+        deltaAstra,
+        deltaKarma
       });
     }
 
@@ -230,6 +256,8 @@ export function getFormattedStatsHistory(currentIndexers = []) {
       name,
       definitionName,
       pointsLabel: latest?.pointsLabel || liveTracker?.pointsLabel || 'POINTS',
+      astra: latest?.astra ?? liveTracker?.astra ?? null,
+      karma: latest?.karma ?? liveTracker?.karma ?? null,
       latest,
       historyAsc,
       historyDesc: [...historyAsc].reverse()

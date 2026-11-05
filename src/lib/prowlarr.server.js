@@ -21,6 +21,7 @@ export async function fetchIndexerStats(prowlarrUrl, apiKey) {
   return res.json();
 }
 
+let cachedTags = [];
 export async function fetchTags(prowlarrUrl, apiKey) {
   const url = `${prowlarrUrl}/api/v1/tag`;
   try {
@@ -28,11 +29,15 @@ export async function fetchTags(prowlarrUrl, apiKey) {
       headers: { 'X-Api-Key': apiKey, 'Accept': 'application/json' },
       signal: AbortSignal.timeout(10000)
     });
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
-  }
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        cachedTags = data;
+        return data;
+      }
+    }
+  } catch {}
+  return cachedTags;
 }
 
 export async function updateIndexerPriority(prowlarrUrl, apiKey, indexer) {

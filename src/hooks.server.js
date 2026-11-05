@@ -6,6 +6,9 @@ import { redirect, json } from '@sveltejs/kit';
 import { restartScheduler } from '$lib/scheduler.server.js';
 import { hasUsers, verifySessionToken, SESSION_COOKIE } from '$lib/auth.server.js';
 
+// Permettre les connexions TLS aux instances locales et aux reverse proxies (*.lripsum.net, certificats auto-signés)
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 // Kick off the scheduler when the server boots
 restartScheduler();
 

@@ -82,7 +82,8 @@ export async function POST({ request }) {
         yggCfClearance,
         freeleech: ['on', 'off'].includes(t.freeleech) ? t.freeleech : 'auto',
         manualUpGB: t.manualUpGB ?? '',
-        manualDownGB: t.manualDownGB ?? ''
+        manualDownGB: t.manualDownGB ?? '',
+        manualAstra: t.manualAstra ?? ''
       };
     }
     saveConfig({

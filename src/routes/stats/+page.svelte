@@ -114,6 +114,7 @@
     visibleTrackers.filter(
       (tr) =>
         (tr.latest?.seedbonus !== null && tr.latest?.seedbonus !== undefined) ||
+        (tr.latest?.astra !== null && tr.latest?.astra !== undefined) ||
         (tr.latest?.seeding !== null && tr.latest?.seeding !== undefined) ||
         (tr.latest?.extraBadges && tr.latest.extraBadges.length > 0)
     )
@@ -123,18 +124,42 @@
     visibleTrackers.reduce((sum, tr) => sum + (Number.isFinite(tr.latest?.seeding) ? tr.latest.seeding : 0), 0)
   );
 
-  // Génère les coordonnées SVG pour la courbe d'évolution (Ratio/Upload ou Points/Tokens)
-  function buildChartPoints(historyAsc, metric = 'ratio') {
+  // État local de la métrique affichée par tracker ('ratio' | 'points' | 'karma' | 'astra')
+  let trackerMetric = $state({});
+
+  function getMetric(trId) {
+    return trackerMetric[trId] || 'ratio';
+  }
+
+  function setMetric(trId, m) {
+    trackerMetric[trId] = m;
+  }
+
+  // Génère les coordonnées SVG pour la courbe d'évolution (Ratio/Upload, Karma, Astra ou Points)
+  function buildChartPoints(historyAsc, metric = 'ratio', fallbackLabel = 'Points') {
     const slice = historyAsc.slice(-periodDays);
     const pts = slice
       .map((d) => {
-        if (metric === 'points') {
-          const p = d.seedbonus ?? d.points;
+        if (metric === 'astra') {
+          const p = d.astra ?? d.flTokens;
           return {
             date: d.date,
             val: p !== null && p !== undefined && Number.isFinite(p) ? Number(p) : null,
             isUploadFallback: false,
-            isPoints: true
+            isPoints: true,
+            unitLabel: 'Astra',
+            metric
+          };
+        }
+        if (metric === 'karma' || metric === 'points') {
+          const p = metric === 'karma' ? (d.karma ?? d.seedbonus ?? d.points) : (d.seedbonus ?? d.points);
+          return {
+            date: d.date,
+            val: p !== null && p !== undefined && Number.isFinite(p) ? Number(p) : null,
+            isUploadFallback: false,
+            isPoints: true,
+            unitLabel: metric === 'karma' ? 'Karma' : (fallbackLabel || 'Points'),
+            metric
           };
         }
         return {
@@ -146,13 +171,15 @@
                 ? Number((d.uploaded / 1024 ** 3).toFixed(2))
                 : null,
           isUploadFallback: d.ratio === null && d.uploaded !== null,
-          isPoints: false
+          isPoints: false,
+          unitLabel: 'Ratio',
+          metric: 'ratio'
         };
       })
       .filter((p) => p.val !== null);
 
     if (pts.length === 0)
-      return { points: [], polyline: '', area: '', min: 0, max: 0, isUploadFallback: false, isPoints: metric === 'points' };
+      return { points: [], polyline: '', area: '', min: 0, max: 0, isUploadFallback: false, isPoints: metric !== 'ratio', metric };
 
     const W = 540;
     const H = 110;
@@ -185,8 +212,9 @@
       area,
       min,
       max,
-      isUploadFallback: pts[0].isUploadFallback,
-      isPoints: metric === 'points'
+      isUploadFallback: pts[0]?.isUploadFallback ?? false,
+      isPoints: metric !== 'ratio',
+      metric
     };
   }
 </script>
@@ -254,6 +282,8 @@
           {@const logoUrl = getTrackerLogo(tr)}
           {@const pts = tr.points ?? tr.latest?.points ?? tr.latest?.seedbonus ?? null}
           {@const label = tr.pointsLabel || tr.latest?.pointsLabel || 'POINTS'}
+          {@const isAstra = tr.name?.toLowerCase().includes('astra') || tr.definitionName?.toLowerCase().includes('astra') || label === 'KARMA'}
+          {@const astraVal = tr.astra ?? tr.latest?.astra ?? (isAstra ? (tr.flTokens ?? tr.latest?.flTokens) : null)}
           {@const pph = tr.pointsPerHour ?? tr.latest?.pointsPerHour ?? null}
           {@const deltaPts = tr.latest?.deltaSeedbonus ?? null}
           {@const seeds = tr.seeding ?? tr.latest?.seeding ?? null}
@@ -311,6 +341,17 @@
                 {/if}
               </div>
             </div>
+
+            {#if isAstra && astraVal !== null && astraVal !== undefined}
+              <div class="flex items-baseline justify-between gap-1 text-[11px] font-mono" style="color: #c084fc;">
+                <span>🪙 {fmtPoints(astraVal)} Astra</span>
+                {#if tr.latest?.deltaAstra}
+                  <span style="color: {tr.latest.deltaAstra > 0 ? '#4ade80' : '#f87171'};">
+                    {fmtDeltaPoints(tr.latest.deltaAstra)}
+                  </span>
+                {/if}
+              </div>
+            {/if}
 
             <div class="flex flex-wrap items-center justify-between gap-1 pt-1" style="border-top: 1px solid #1e293b;">
               <div class="flex flex-wrap items-center gap-1">
@@ -372,8 +413,8 @@
         </button>
       </div>
 
-      <!-- Sélecteur de métrique pour les courbes et le tableau comparatif -->
-      {#if viewMode === 'tracker' || viewMode === 'matrix'}
+      <!-- Sélecteur de métrique pour le tableau comparatif -->
+      {#if viewMode === 'matrix'}
         <div class="flex items-center gap-1 p-1 rounded-lg" style="background: var(--bg-primary);">
           <button
             type="button"
@@ -443,13 +484,17 @@
     <div class="space-y-5">
       {#each visibleTrackers as tr (tr.id)}
         {@const logoUrl = getTrackerLogo(tr)}
-        {@const chart = buildChartPoints(tr.historyAsc, chartMetric)}
-        {@const rowsDesc = tr.historyDesc.slice(0, periodDays)}
         {@const ptsLabel = tr.pointsLabel || tr.latest?.pointsLabel || 'Points'}
+        {@const isAstra = tr.name?.toLowerCase().includes('astra') || tr.definitionName?.toLowerCase().includes('astra') || ptsLabel === 'KARMA'}
         {@const currentPts = tr.points ?? tr.latest?.points ?? tr.latest?.seedbonus ?? null}
+        {@const currentAstra = tr.astra ?? tr.latest?.astra ?? (isAstra ? (tr.flTokens ?? tr.latest?.flTokens) : null) ?? null}
         {@const currentPph = tr.pointsPerHour ?? tr.latest?.pointsPerHour ?? null}
         {@const currentSeeds = tr.seeding ?? tr.latest?.seeding ?? null}
         {@const badges = tr.extraBadges?.length ? tr.extraBadges : (tr.latest?.extraBadges || [])}
+        {@const hasCurrency = (currentPts !== null && currentPts !== undefined) || (currentAstra !== null && currentAstra !== undefined) || isAstra}
+        {@const activeMetric = getMetric(tr.id)}
+        {@const chart = buildChartPoints(tr.historyAsc, activeMetric, ptsLabel)}
+        {@const rowsDesc = tr.historyDesc.slice(0, periodDays)}
         <div
           class="rounded-2xl p-5 space-y-4"
           style="background: var(--bg-card); border: 1px solid var(--border);"
@@ -504,8 +549,53 @@
               </div>
             </div>
 
-            <!-- KPIs actuels du jour (Ratio, Upload, Download, Buffer, Points/Jetons, Seeds) -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-right">
+            <!-- Bouton ratio/point en haut à droite du tracker (affiché uniquement si le tracker dispose d'une monnaie) -->
+            {#if hasCurrency}
+              <div
+                class="flex items-center gap-1 p-1 rounded-xl shrink-0"
+                style="background: var(--bg-secondary); border: 1px solid var(--border);"
+              >
+                <button
+                  type="button"
+                  onclick={() => setMetric(tr.id, 'ratio')}
+                  class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                  style="background: {activeMetric === 'ratio' ? '#166534' : 'transparent'}; color: {activeMetric === 'ratio' ? '#4ade80' : 'var(--text-muted)'};"
+                >
+                  📈 Ratio
+                </button>
+                {#if isAstra}
+                  <button
+                    type="button"
+                    onclick={() => setMetric(tr.id, 'karma')}
+                    class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                    style="background: {activeMetric === 'karma' ? '#713f12' : 'transparent'}; color: {activeMetric === 'karma' ? '#facc15' : 'var(--text-muted)'};"
+                  >
+                    ✨ Karma
+                  </button>
+                  <button
+                    type="button"
+                    onclick={() => setMetric(tr.id, 'astra')}
+                    class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                    style="background: {activeMetric === 'astra' ? '#581c87' : 'transparent'}; color: {activeMetric === 'astra' ? '#c084fc' : 'var(--text-muted)'};"
+                  >
+                    🪙 Astra
+                  </button>
+                {:else}
+                  <button
+                    type="button"
+                    onclick={() => setMetric(tr.id, 'points')}
+                    class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                    style="background: {activeMetric === 'points' ? '#713f12' : 'transparent'}; color: {activeMetric === 'points' ? '#facc15' : 'var(--text-muted)'};"
+                  >
+                    🪙 {ptsLabel}
+                  </button>
+                {/if}
+              </div>
+            {/if}
+          </div>
+
+          <!-- KPIs actuels du jour (Ratio, Upload, Download, Buffer, Points/Karma, Astra, Seeds) -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 {isAstra ? 'lg:grid-cols-7' : 'lg:grid-cols-6'} gap-2.5 text-right">
               <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary);">
                 <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
                   Ratio actuel
@@ -570,7 +660,7 @@
 
               <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary); border: 1px solid #42200688;">
                 <div class="text-[10px] uppercase tracking-wider font-bold" style="color: #facc15;">
-                  🪙 {ptsLabel}
+                  {isAstra ? '✨ Karma' : `🪙 ${ptsLabel}`}
                 </div>
                 <div class="text-sm font-extrabold font-mono" style="color: #fef08a;">
                   {currentPts !== null && currentPts !== undefined ? fmtPoints(currentPts) : '—'}
@@ -588,6 +678,26 @@
                 </div>
               </div>
 
+              {#if isAstra}
+                <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary); border: 1px solid #581c8766;">
+                  <div class="text-[10px] uppercase tracking-wider font-bold" style="color: #c084fc;">
+                    🪙 Astra
+                  </div>
+                  <div class="text-sm font-extrabold font-mono" style="color: #e9d5ff;">
+                    {currentAstra !== null && currentAstra !== undefined ? fmtPoints(currentAstra) : '—'}
+                  </div>
+                  <div class="text-[11px] font-mono">
+                    {#if tr.latest?.deltaAstra !== null && tr.latest?.deltaAstra !== undefined && tr.latest?.deltaAstra !== 0}
+                      <span style="color: {tr.latest.deltaAstra > 0 ? '#4ade80' : '#f87171'};">
+                        {fmtDeltaPoints(tr.latest.deltaAstra)} auj.
+                      </span>
+                    {:else}
+                      <span style="color: var(--text-muted);">monnaie site</span>
+                    {/if}
+                  </div>
+                </div>
+              {/if}
+
               <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary);">
                 <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
                   🌱 Seeds
@@ -604,9 +714,8 @@
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Courbe SVG d'évolution (Ratio ou Points selon le sélecteur) -->
+          <!-- Courbe SVG d'évolution (Ratio, Karma, Astra ou Points selon le sélecteur du tracker) -->
           {#if chart.points.length > 0}
             <div
               class="rounded-xl p-3"
@@ -614,7 +723,11 @@
             >
               <div class="flex items-center justify-between text-xs mb-1.5">
                 <span class="font-semibold" style="color: #cbd5e1;">
-                  {#if chart.isPoints}
+                  {#if activeMetric === 'astra'}
+                    🪙 Évolution Astra ({chart.points.length} jour{chart.points.length > 1 ? 's' : ''})
+                  {:else if activeMetric === 'karma'}
+                    ✨ Évolution Karma ({chart.points.length} jour{chart.points.length > 1 ? 's' : ''})
+                  {:else if chart.isPoints}
                     🪙 Évolution {ptsLabel} ({chart.points.length} jour{chart.points.length > 1 ? 's' : ''})
                   {:else}
                     {chart.isUploadFallback ? 'Évolution Upload (Go)' : '📈 Évolution du Ratio'} ({chart.points.length} jour{chart.points.length > 1 ? 's' : ''})
@@ -627,8 +740,8 @@
               <svg viewBox="0 0 540 110" class="w-full h-28 overflow-visible">
                 <defs>
                   <linearGradient id="grad-{tr.id}" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color={chart.isPoints ? '#eab308' : '#8b5cf6'} stop-opacity="0.35" />
-                    <stop offset="100%" stop-color={chart.isPoints ? '#eab308' : '#8b5cf6'} stop-opacity="0.0" />
+                    <stop offset="0%" stop-color={activeMetric === 'astra' ? '#a855f7' : chart.isPoints ? '#eab308' : '#8b5cf6'} stop-opacity="0.35" />
+                    <stop offset="100%" stop-color={activeMetric === 'astra' ? '#a855f7' : chart.isPoints ? '#eab308' : '#8b5cf6'} stop-opacity="0.0" />
                   </linearGradient>
                 </defs>
                 {#if chart.area}
@@ -637,7 +750,7 @@
                 {#if chart.points.length > 1}
                   <polyline
                     fill="none"
-                    stroke={chart.isPoints ? '#facc15' : '#a78bfa'}
+                    stroke={activeMetric === 'astra' ? '#c084fc' : chart.isPoints ? '#facc15' : '#a78bfa'}
                     stroke-width="2.5"
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -650,7 +763,7 @@
                       cx={pt.x}
                       cy={pt.y}
                       r="4"
-                      fill={chart.isPoints ? '#facc15' : '#4ade80'}
+                      fill={activeMetric === 'astra' ? '#c084fc' : chart.isPoints ? '#facc15' : '#4ade80'}
                       stroke="#0f172a"
                       stroke-width="1.5"
                     >
@@ -696,8 +809,20 @@
                   <th class="py-2 px-2.5 font-semibold text-right">Download</th>
                   <th class="py-2 px-2.5 font-semibold text-right">Δ Download / j</th>
                   <th class="py-2 px-2.5 font-semibold text-right">Buffer</th>
-                  <th class="py-2 px-2.5 font-semibold text-right" style="color: #facc15;">🪙 {ptsLabel}</th>
-                  <th class="py-2 px-2.5 font-semibold text-right">Δ {ptsLabel} / j</th>
+                  <th class="py-2 px-2.5 font-semibold text-right" style="color: #facc15;">
+                    {isAstra ? '✨ Karma' : `🪙 ${ptsLabel}`}
+                  </th>
+                  <th class="py-2 px-2.5 font-semibold text-right">
+                    Δ {isAstra ? 'Karma' : ptsLabel} / j
+                  </th>
+                  {#if isAstra}
+                    <th class="py-2 px-2.5 font-semibold text-right" style="color: #c084fc;">
+                      🪙 Astra
+                    </th>
+                    <th class="py-2 px-2.5 font-semibold text-right">
+                      Δ Astra / j
+                    </th>
+                  {/if}
                   <th class="py-2 px-2.5 font-semibold text-right">🌱 Seeds</th>
                 </tr>
               </thead>
@@ -761,6 +886,17 @@
                     >
                       {fmtDeltaPoints(day.deltaSeedbonus)}
                     </td>
+                    {#if isAstra}
+                      <td class="py-2 px-2.5 text-right font-mono font-bold" style="color: #e9d5ff;">
+                        {day.astra !== null && day.astra !== undefined ? fmtPoints(day.astra) : (currentAstra !== null ? fmtPoints(currentAstra) : '—')}
+                      </td>
+                      <td
+                        class="py-2 px-2.5 text-right font-mono"
+                        style="color: {(day.deltaAstra ?? 0) > 0 ? '#4ade80' : (day.deltaAstra ?? 0) < 0 ? '#f87171' : 'var(--text-muted)'};"
+                      >
+                        {fmtDeltaPoints(day.deltaAstra)}
+                      </td>
+                    {/if}
                     <td class="py-2 px-2.5 text-right font-mono" style="color: #86efac;">
                       {day.seeding !== null && day.seeding !== undefined
                         ? `🌱 ${Number(day.seeding).toLocaleString('fr-FR')}`

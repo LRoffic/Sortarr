@@ -77,6 +77,8 @@ function buildStats({
   pointsLabel,
   pointsPerHour,
   flTokens,
+  astra,
+  karma,
   seeding,
   leeching,
   level,
@@ -99,6 +101,8 @@ function buildStats({
     pointsLabel: pointsLabel || 'POINTS',
     pointsPerHour: pointsPerHour ?? null,
     flTokens: flTokens ?? null,
+    astra: astra ?? null,
+    karma: karma ?? null,
     seeding: seeding ?? null,
     leeching: leeching ?? null,
     level: level ?? null,
@@ -503,7 +507,7 @@ export async function fetchDraupnirrStats(baseUrl, apiKey) {
 }
 
 /** AstraTorrent : GET https://astratorrent.la/api/user.php?apikey=... & bonus.php?passkey=... */
-export async function fetchAstraStats(baseUrl, apiKey) {
+export async function fetchAstraStats(baseUrl, apiKey, cfg = {}) {
   const origin = (!baseUrl || baseUrl.includes('jackett'))
     ? 'https://astratorrent.la'
     : baseUrl.replace(/\/+$/, '').replace(/\/api(\/.*)?$/, '');
@@ -527,9 +531,12 @@ export async function fetchAstraStats(baseUrl, apiKey) {
   const ptsPerHour = toNumber(bonusData?.pts_per_hour ?? bonusData?.pts_per_hour_base);
 
   // Monnaie 2 : ASTRA (monnaie du site / jetons)
+  const manualAstra = cfg?.manualAstra !== undefined && cfg?.manualAstra !== ''
+    ? toNumber(cfg.manualAstra)
+    : null;
   const astra = toNumber(
     d?.astra ?? d?.astras ?? d?.coins ?? d?.tokens ??
-    bonusData?.astra ?? bonusData?.astras ?? bonusData?.tokens
+    bonusData?.astra ?? bonusData?.astras ?? bonusData?.tokens ?? manualAstra
   );
 
   const extraBadges = [];
@@ -551,6 +558,8 @@ export async function fetchAstraStats(baseUrl, apiKey) {
     pointsLabel: 'KARMA',
     pointsPerHour: ptsPerHour,
     flTokens: astra,
+    astra,
+    karma,
     seeding: toNumber(d.seeding ?? bonusData?.active_seeds),
     leeching: toNumber(d.leeching),
     extraBadges,
@@ -1439,7 +1448,7 @@ export async function getTrackerStats(indexer, cfg, ctx = {}) {
           break;
         case 'astra':
           if (!apiKey) throw new Error('Clé API AstraTorrent manquante');
-          s = await fetchAstraStats(baseUrl, apiKey);
+          s = await fetchAstraStats(baseUrl, apiKey, cfg);
           break;
         case 'speedapp':
           if (!apiKey) throw new Error('Jeton API SpeedApp manquant (speedapp.io/profile/api-tokens)');
