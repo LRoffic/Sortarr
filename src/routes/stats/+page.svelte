@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import { getTrackerLogo, getTrackerInitials } from '$lib/logos.js';
   import { scrollAnimate } from '$lib/animate.js';
+  import EvolutionChart from '$lib/EvolutionChart.svelte';
 
   let { data } = $props();
 
@@ -761,111 +762,15 @@
               </div>
             </div>
 
-          <!-- Courbe SVG d'évolution (Ratio, Karma, Astra ou Points selon le sélecteur du tracker) -->
+          <!-- Courbe SVG d'évolution (Anime depuis 0.0 vers les valeurs au scroll) -->
           {#if chart.points.length > 0}
-            <div
-              use:scrollAnimate
-              class="stat-scroll-trigger rounded-xl p-3"
-              style="background: var(--bg-secondary); border: 1px solid var(--border);"
-            >
-              <div class="flex items-center justify-between text-xs mb-1.5">
-                <span class="font-semibold" style="color: #cbd5e1;">
-                  {#if activeMetric === 'astra'}
-                    🪙 Évolution Astra ({chart.points.length} jour{chart.points.length > 1 ? 's' : ''})
-                  {:else if activeMetric === 'karma'}
-                    ✨ Évolution Karma ({chart.points.length} jour{chart.points.length > 1 ? 's' : ''})
-                  {:else if chart.isPoints}
-                    🪙 Évolution {ptsLabel} ({chart.points.length} jour{chart.points.length > 1 ? 's' : ''})
-                  {:else}
-                    {chart.isUploadFallback ? 'Évolution Upload (Go)' : '📈 Évolution du Ratio'} ({chart.points.length} jour{chart.points.length > 1 ? 's' : ''})
-                  {/if}
-                </span>
-                <span style="color: var(--text-muted);">
-                  Min : <strong>{chart.isPoints ? fmtPoints(chart.min) : chart.min.toFixed(2)}</strong> • Max : <strong>{chart.isPoints ? fmtPoints(chart.max) : chart.max.toFixed(2)}</strong>
-                </span>
-              </div>
-              <svg viewBox="0 0 540 110" class="w-full h-28 overflow-visible">
-                <defs>
-                  <linearGradient id="grad-{tr.id}" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color={activeMetric === 'astra' ? '#a855f7' : chart.isPoints ? '#eab308' : '#8b5cf6'} stop-opacity="0.35" />
-                    <stop offset="100%" stop-color={activeMetric === 'astra' ? '#a855f7' : chart.isPoints ? '#eab308' : '#8b5cf6'} stop-opacity="0.0" />
-                  </linearGradient>
-                </defs>
-
-                <!-- Barres verticales de statistiques animées sous chaque point qui s'élèvent du bas vers le haut -->
-                {#each chart.points as pt, idx}
-                  {@const barW = Math.max(3, Math.min(8, Math.floor(400 / chart.points.length)))}
-                  {@const barH = Math.max(3, 94 - pt.y)}
-                  <rect
-                    class="stat-bar-animated"
-                    x={pt.x - barW / 2}
-                    y={pt.y}
-                    width={barW}
-                    height={barH}
-                    rx="2"
-                    fill="url(#grad-{tr.id})"
-                    stroke={activeMetric === 'astra' ? '#c084fc' : chart.isPoints ? '#facc15' : '#8b5cf6'}
-                    stroke-opacity="0.35"
-                    stroke-width="1"
-                    style="transform-origin: {pt.x}px 94px; animation-delay: {idx * 30}ms;"
-                  >
-                    <title>{pt.date} : {chart.isPoints ? fmtPoints(pt.val) : pt.val}</title>
-                  </rect>
-                {/each}
-
-                {#if chart.area}
-                  <polygon points={chart.area} fill="url(#grad-{tr.id})" class="stat-area-animated" />
-                {/if}
-                {#if chart.points.length > 1}
-                  <polyline
-                    class="stat-line-animated"
-                    fill="none"
-                    stroke={activeMetric === 'astra' ? '#c084fc' : chart.isPoints ? '#facc15' : '#a78bfa'}
-                    stroke-width="2.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    points={chart.polyline}
-                  />
-                {/if}
-                {#each chart.points as pt, idx}
-                  <g class="stat-point-animated" style="animation-delay: {idx * 30 + 120}ms;">
-                    <circle
-                      cx={pt.x}
-                      cy={pt.y}
-                      r="4"
-                      fill={activeMetric === 'astra' ? '#c084fc' : chart.isPoints ? '#facc15' : '#4ade80'}
-                      stroke="#0f172a"
-                      stroke-width="1.5"
-                    >
-                      <title>{pt.date} : {chart.isPoints ? fmtPoints(pt.val) : pt.val}</title>
-                    </circle>
-                    {#if chart.points.length <= 14}
-                      <text
-                        class="stat-point-animated"
-                        style="animation-delay: {idx * 30 + 150}ms;"
-                        x={pt.x}
-                        y={pt.y - 8}
-                        text-anchor="middle"
-                        fill="#cbd5e1"
-                        font-size="9"
-                        font-family="monospace"
-                      >
-                        {chart.isPoints ? fmtPoints(pt.val) : pt.val.toFixed(2)}
-                      </text>
-                      <text
-                        x={pt.x}
-                        y="107"
-                        text-anchor="middle"
-                        fill="#64748b"
-                        font-size="8.5"
-                      >
-                        {fmtShortDate(pt.date)}
-                      </text>
-                    {/if}
-                  </g>
-                {/each}
-              </svg>
-            </div>
+            <EvolutionChart
+              {chart}
+              trackerId={tr.id}
+              {activeMetric}
+              {ptsLabel}
+              {isAstra}
+            />
           {/if}
 
           <!-- Tableau historique jour par jour pour ce tracker -->
