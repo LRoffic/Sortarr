@@ -415,6 +415,7 @@
     })
   );
   let trackerTests = $state({});
+  let openTrackerLogs = $state({});
   let isDetecting = $state(false);
   let showDebugConsole = $state(false);
   let debugHistory = $state([]);
@@ -1425,24 +1426,135 @@
             {#if test && !test.loading}
               <div class="mt-2 flex items-center justify-between gap-2 flex-wrap text-xs" style="color: {test.ok ? '#4ade80' : '#f87171'};">
                 <div>
-                  {#if test.ok && test.stats.public}
+                  {#if test.ok && test.stats?.public}
                     ✅ Tracker public — aucun ratio géré {test.stats.seeding !== null && test.stats.seeding !== undefined ? `• 🌱 ${test.stats.seeding} seeds actifs` : ''}
-                  {:else if test.ok}
+                  {:else if test.ok && test.stats}
                     ✅ Ratio {test.stats.infinite ? '∞' : (test.stats.ratio?.toFixed(2) ?? '—')} • ↑ {fmtBytes(test.stats.uploaded)} • ↓ {fmtBytes(test.stats.downloaded)} • Buffer {fmtBytes(test.stats.buffer)} • {test.stats.pointsLabel || 'Points'} : {test.stats.points !== null && test.stats.points !== undefined ? Math.round(test.stats.points).toLocaleString('fr-FR') : '—'} • 🌱 Seeds : {test.stats.seeding !== null && test.stats.seeding !== undefined ? test.stats.seeding : '—'} • FL : {test.stats.freeleech === null ? 'non détecté' : test.stats.freeleech ? 'oui' : 'non'}
                   {:else}
-                    ❌ {test.error}
+                    ❌ {test.error || 'Erreur inconnue'}
                   {/if}
                 </div>
                 <button
                   type="button"
-                  onclick={() => { showDebugConsole = true; }}
-                  class="text-[11px] px-2 py-0.5 rounded font-mono cursor-pointer shrink-0"
-                  style="background: #1e293b; color: #94a3b8; border: 1px solid #334155;"
-                  title="Ouvrir la console de débogage pour voir la requête HTTP et la réponse brute"
+                  onclick={() => { openTrackerLogs[idx.id] = !openTrackerLogs[idx.id]; }}
+                  class="text-[11px] px-2 py-0.5 rounded font-mono cursor-pointer shrink-0 transition-colors"
+                  style="background: {openTrackerLogs[idx.id] ? '#334155' : '#1e293b'}; color: {openTrackerLogs[idx.id] ? '#f8fafc' : '#94a3b8'}; border: 1px solid #334155;"
+                  title="Afficher ou masquer la console de logs et requêtes pour ce tracker"
                 >
-                  🔍 Voir requête / réponse
+                  {openTrackerLogs[idx.id] ? '🔼 Masquer les logs' : '🔍 Voir les logs'}
                 </button>
               </div>
+
+              {#if openTrackerLogs[idx.id]}
+                <!-- Console de logs dédiée à ce tracker sous sa propre carte -->
+                <div class="mt-3 rounded-xl overflow-hidden font-mono text-xs" style="background: #090d16; border: 1px solid #334155;">
+                  <div class="flex items-center justify-between px-3 py-2 flex-wrap gap-2"
+                       style="background: #0f172a; border-bottom: 1px solid #1e293b;">
+                    <div class="flex items-center gap-2">
+                      <span class="w-2 h-2 rounded-full inline-block" style="background: {test.ok ? '#22c55e' : '#ef4444'};"></span>
+                      <span class="font-bold text-[11px]" style="color: #e2e8f0;">
+                        Logs &amp; Requêtes HTTP — {idx.name}
+                      </span>
+                      <span class="text-[10px] px-1.5 py-0.2 rounded" style="background: #1e293b; color: #a78bfa;">
+                        {t.type}
+                      </span>
+                      <span class="text-[10px]" style="color: #64748b;">
+                        {test.durationMs ?? 0} ms • {test.debugLogs?.length ?? 0} requête(s)
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onclick={() => { maskSecrets = !maskSecrets; }}
+                        class="text-[10px] px-1.5 py-0.5 rounded cursor-pointer"
+                        style="background: #1e293b; color: {maskSecrets ? '#94a3b8' : '#fbbf24'}; border: 1px solid #334155;"
+                        title="Afficher ou masquer les clés API et cookies"
+                      >
+                        {maskSecrets ? '🔒 Clés masquées' : '🔓 Clés visibles'}
+                      </button>
+                      <button
+                        type="button"
+                        onclick={() => { openTrackerLogs[idx.id] = false; }}
+                        class="text-[10px] px-1.5 py-0.5 rounded cursor-pointer"
+                        style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155;"
+                      >
+                        ✕ Fermer
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="p-3 max-h-96 overflow-y-auto space-y-2.5">
+                    {#if test.error}
+                      <div class="px-2.5 py-1.5 rounded text-[11px]" style="background: #450a0a; color: #fca5a5; border: 1px solid #7f1d1d;">
+                        ❌ {test.error}
+                      </div>
+                    {/if}
+
+                    {#if test.debugLogs && test.debugLogs.length > 0}
+                      <div class="space-y-2">
+                        {#each test.debugLogs as req, rIdx}
+                          <div class="rounded-lg p-2.5" style="background: #0d121f; border: 1px solid #1e293b;">
+                            <div class="flex items-center gap-2 flex-wrap text-[11px]">
+                              <span class="px-1.5 py-0.2 rounded font-bold text-[10px]"
+                                    style="background: #3b82f622; color: #60a5fa;">
+                                {req.method}
+                              </span>
+                              <span class="px-1.5 py-0.2 rounded font-bold text-[10px]"
+                                    style="background: {req.status >= 200 && req.status < 300 ? '#22c55e22' : req.status >= 300 && req.status < 400 ? '#f59e0b22' : '#ef444422'};
+                                           color: {req.status >= 200 && req.status < 300 ? '#4ade80' : req.status >= 300 && req.status < 400 ? '#fbbf24' : '#f87171'};">
+                                HTTP {req.status}
+                              </span>
+                              {#if req.tlsFallback}
+                                <span class="px-1.5 py-0.2 rounded text-[10px]"
+                                      style="background: #eab30822; color: #fde047;"
+                                      title="Requête passée via le fallback TLS tolérant aux chaînes SSL incomplètes">
+                                  TLS Fallback
+                                </span>
+                              {/if}
+                              <span class="text-[10px]" style="color: #64748b;">{req.durationMs} ms</span>
+                              <span class="break-all" style="color: #cbd5e1;">
+                                {maskValue(req.url)}
+                              </span>
+                            </div>
+
+                            <div class="flex flex-col gap-1.5 mt-2">
+                              <details class="group">
+                                <summary class="cursor-pointer text-[11px] select-none text-slate-400 hover:text-slate-300">
+                                  ▸ En-têtes envoyés (Headers)
+                                </summary>
+                                <pre class="mt-1 p-2 rounded overflow-x-auto text-[11px]"
+                                     style="background: #020617; color: #93c5fd; border: 1px solid #1e293b;">{formatHeadersForDebug(req.requestHeaders)}</pre>
+                              </details>
+
+                              <details class="group" open={!test.ok || rIdx === test.debugLogs.length - 1}>
+                                <summary class="cursor-pointer text-[11px] select-none text-slate-400 hover:text-slate-300">
+                                  ▸ Réponse brute reçue ({req.responsePreview ? `${req.responsePreview.length} car.` : 'vide'})
+                                </summary>
+                                <pre class="mt-1 p-2 rounded overflow-x-auto max-h-56 text-[11px] whitespace-pre-wrap break-all"
+                                     style="background: #020617; color: #a7f3d0; border: 1px solid #1e293b;">{req.responsePreview || '(aucun corps de réponse)'}</pre>
+                              </details>
+                            </div>
+                          </div>
+                        {/each}
+                      </div>
+                    {:else}
+                      <div class="text-[11px] text-center py-2" style="color: #64748b;">
+                        (Aucune trace HTTP enregistrée pour ce test)
+                      </div>
+                    {/if}
+
+                    {#if test.stats}
+                      <details class="group">
+                        <summary class="cursor-pointer text-[11px] select-none" style="color: #a78bfa;">
+                          ▸ Données extraites et normalisées par Sortarr (stats)
+                        </summary>
+                        <pre class="mt-1 p-2 rounded overflow-x-auto text-[11px]"
+                             style="background: #0d121f; color: #d8b4fe; border: 1px solid #1e293b;">{JSON.stringify(test.stats, null, 2)}</pre>
+                      </details>
+                    {/if}
+                  </div>
+                </div>
+              {/if}
             {/if}
           </div>
         {/each}
