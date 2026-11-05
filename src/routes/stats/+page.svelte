@@ -632,7 +632,7 @@
                 <div
                   class="h-1 w-full rounded-full overflow-hidden mt-1.5 cursor-help"
                   style="background: #1e293b;"
-                  title={tr.latest?.infinite ? 'Ratio actuel : ∞ (Illimité)' : `Ratio actuel : ${(tr.latest?.ratio ?? 0).toFixed(2)} / 4.0 (${Math.min(100, Math.round(((tr.latest?.ratio ?? 0) / 4) * 100))}% de l\'objectif)`}
+                  title={tr.latest?.infinite ? 'Ratio actuel : ∞ (Illimité)' : `Ratio actuel : ${(tr.latest?.ratio ?? 0).toFixed(2)} / 4.0 (${Math.min(100, Math.round(((tr.latest?.ratio ?? 0) / 4) * 100))}% de l'objectif)`}
                 >
                   <div class="h-full rounded-full stat-bar-grow-x" style="width: {tr.latest?.infinite ? 100 : Math.min(100, Math.max(12, ((tr.latest?.ratio ?? 0) / 4) * 100))}%; background: #4ade80;"></div>
                 </div>
@@ -787,7 +787,7 @@
                 <div
                   class="h-1 w-full rounded-full overflow-hidden mt-1.5 cursor-help"
                   style="background: #1e293b;"
-                  title={`Seeds : ${currentSeeds ?? 0} / 150 (${Math.min(100, Math.round(((currentSeeds ?? 0) / 150) * 100))}% de l\'objectif)`}
+                  title={`Seeds : ${currentSeeds ?? 0} / 150 (${Math.min(100, Math.round(((currentSeeds ?? 0) / 150) * 100))}% de l'objectif)`}
                 >
                   <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((currentSeeds ?? 0) / 150) * 100))}%; background: #4ade80;"></div>
                 </div>

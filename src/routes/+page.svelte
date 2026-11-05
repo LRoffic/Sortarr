@@ -504,7 +504,7 @@
                 </div>
                 <div
                   class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
-                  title={indexer.tracker.infinite ? 'Ratio : ∞ (Illimité)' : `Ratio : ${(indexer.tracker.ratio ?? 0).toFixed(2)} / 4.0 (${Math.min(100, Math.round(((indexer.tracker.ratio ?? 0) / 4) * 100))}% de l\'objectif)`}
+                  title={indexer.tracker.infinite ? 'Ratio : ∞ (Illimité)' : `Ratio : ${(indexer.tracker.ratio ?? 0).toFixed(2)} / 4.0 (${Math.min(100, Math.round(((indexer.tracker.ratio ?? 0) / 4) * 100))}% de l'objectif)`}
                 >
                   <div class="h-full rounded-full stat-bar-grow-x" style="width: {indexer.tracker.infinite ? 100 : Math.min(100, Math.max(12, ((indexer.tracker.ratio ?? 0) / 4) * 100))}%; background: {getRatioColor(indexer.tracker)};"></div>
                 </div>
@@ -582,7 +582,7 @@
                 </div>
                 <div
                   class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
-                  title={`Seeds : ${indexer.tracker.seeding ?? 0} / 150 (${Math.min(100, Math.round(((indexer.tracker.seeding ?? 0) / 150) * 100))}% de l\'objectif)`}
+                  title={`Seeds : ${indexer.tracker.seeding ?? 0} / 150 (${Math.min(100, Math.round(((indexer.tracker.seeding ?? 0) / 150) * 100))}% de l'objectif)`}
                 >
                   <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.seeding ?? 0) / 150) * 100))}%; background: #4ade80;"></div>
                 </div>
