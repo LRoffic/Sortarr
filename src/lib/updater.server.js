@@ -5,8 +5,9 @@
 import fs from 'fs';
 import path from 'path';
 import https from 'https';
-import { exec } from 'child_process';
+import { exec, execSync } from 'child_process';
 import { promisify } from 'util';
+import { getConfig, saveConfig } from './config.server.js';
 
 const execAsync = promisify(exec);
 
@@ -29,6 +30,46 @@ export function getCurrentVersion() {
   } catch {
     return '1.0.0';
   }
+}
+
+/** Lit les détails de la version actuelle avec horodatage de la dernière mise à jour */
+export function getCurrentVersionDetails() {
+  const version = getCurrentVersion();
+  let lastUpdatedAt = null;
+
+  // 1. Config enregistrée lors d'une précédente mise à jour automatique
+  try {
+    const cfg = getConfig();
+    if (cfg?.lastUpdatedAt) {
+      lastUpdatedAt = cfg.lastUpdatedAt;
+    }
+  } catch {}
+
+  // 2. Si non présent, date du commit Git le plus récent (si disponible)
+  if (!lastUpdatedAt) {
+    try {
+      const gitDate = execSync('git log -1 --format=%cI', {
+        timeout: 2000,
+        stdio: ['ignore', 'pipe', 'ignore']
+      }).toString().trim();
+      if (gitDate) {
+        lastUpdatedAt = gitDate;
+      }
+    } catch {}
+  }
+
+  // 3. Fallback sur mtime de package.json
+  if (!lastUpdatedAt) {
+    try {
+      const st = fs.statSync(PACKAGE_JSON_PATH);
+      lastUpdatedAt = st.mtime.toISOString();
+    } catch {}
+  }
+
+  return {
+    version,
+    lastUpdatedAt
+  };
 }
 
 /** Normalise une version "v1.2.3" -> [1, 2, 3] */
@@ -150,11 +191,14 @@ function downloadFile(urlStr, destPath, maxRedirects = 5) {
  * Vérifie la dernière release disponible sur https://github.com/LRoffic/Sortarr/releases
  */
 export async function checkForUpdates({ force = false } = {}) {
-  const currentVersion = getCurrentVersion();
+  const versionDetails = getCurrentVersionDetails();
+  const currentVersion = versionDetails.version;
+  const lastUpdatedAt = versionDetails.lastUpdatedAt;
   if (!force && updateCache.data && Date.now() - updateCache.checkedAt < CACHE_TTL_MS) {
     return {
       ...updateCache.data,
       currentVersion,
+      lastUpdatedAt,
       updateAvailable: compareVersions(currentVersion, updateCache.data.latestVersion) > 0
     };
   }
@@ -180,6 +224,7 @@ export async function checkForUpdates({ force = false } = {}) {
         repo: GITHUB_REPO,
         repoUrl: GITHUB_REPO_URL,
         currentVersion,
+        lastUpdatedAt,
         latestVersion: currentVersion,
         tagName: null,
         updateAvailable: false,
@@ -214,6 +259,7 @@ export async function checkForUpdates({ force = false } = {}) {
       repo: GITHUB_REPO,
       repoUrl: GITHUB_REPO_URL,
       currentVersion,
+      lastUpdatedAt,
       latestVersion,
       tagName: release.tag_name,
       updateAvailable,
@@ -237,6 +283,7 @@ export async function checkForUpdates({ force = false } = {}) {
       repo: GITHUB_REPO,
       repoUrl: GITHUB_REPO_URL,
       currentVersion,
+      lastUpdatedAt,
       latestVersion: currentVersion,
       updateAvailable: false,
       htmlUrl: `${GITHUB_REPO_URL}/releases`,
@@ -366,6 +413,11 @@ export async function performUpdate() {
       }
     } catch {}
   }, 1000);
+
+  // Enregistre l'horodatage de la dernière mise à jour réussie
+  try {
+    saveConfig({ lastUpdatedAt: new Date().toISOString() });
+  } catch {}
 
   // Invalide le cache
   updateCache = { checkedAt: 0, data: null };

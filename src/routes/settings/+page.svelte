@@ -2,6 +2,7 @@
   import { untrack, onMount } from 'svelte';
   import { getTrackerLogo, getTrackerInitials } from '$lib/logos.js';
   import { markdownToHtml } from '$lib/markdown.js';
+  import { formatDateTime, formatDate } from '$lib/formatters.js';
   import {
     changePasswordSchema,
     totpConfirmSchema,
@@ -1982,6 +1983,7 @@
         disabled={isCheckingUpdate || isInstallingUpdate}
         class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shrink-0"
         style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+        data-tooltip={updateStatus?.checkedAt ? `Dernière vérification : ${formatDateTime(updateStatus.checkedAt)}` : 'Vérifie les mises à jour sur GitHub'}
       >
         {isCheckingUpdate ? '⏳ Vérification...' : '🔍 Vérifier les mises à jour'}
       </button>
@@ -1991,36 +1993,72 @@
       <div class="rounded-lg p-3 space-y-3 text-xs" style="background: var(--bg-card); border: 1px solid var(--border);">
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div class="flex items-center gap-3 flex-wrap">
-            <div>
+            <div class="flex items-center gap-1.5 flex-wrap">
               <span style="color: var(--text-muted);">Version installée :</span>
-              <span class="font-mono font-bold ml-1 px-2 py-0.5 rounded" style="background: #7c3aed22; color: #a78bfa;">
+              <span
+                class="font-mono font-bold px-2 py-0.5 rounded cursor-help"
+                style="background: #7c3aed22; color: #a78bfa;"
+                data-tooltip={updateStatus.lastUpdatedAt ? `Dernière mise à jour installée le ${formatDateTime(updateStatus.lastUpdatedAt)}` : `Version installée : v${updateStatus.currentVersion}`}
+              >
                 v{updateStatus.currentVersion || '1.0.0'}
               </span>
+              {#if updateStatus.lastUpdatedAt}
+                <span
+                  class="text-[11px] px-1.5 py-0.5 rounded cursor-help flex items-center gap-1"
+                  style="background: #33415544; color: #94a3b8;"
+                  data-tooltip={`Date et heure de la dernière mise à jour installée : ${formatDateTime(updateStatus.lastUpdatedAt)}`}
+                >
+                  🕒 {formatDateTime(updateStatus.lastUpdatedAt)}
+                </span>
+              {/if}
             </div>
-            <div>
+            <div class="flex items-center gap-1.5 flex-wrap">
               <span style="color: var(--text-muted);">Dernière release GitHub :</span>
               {#if updateStatus.noReleasesYet}
                 <span class="font-mono ml-1 px-2 py-0.5 rounded" style="background: #1e293b; color: #94a3b8;">
                   Aucune release publiée
                 </span>
               {:else}
-                <span class="font-mono font-bold ml-1 px-2 py-0.5 rounded"
-                      style="background: {updateStatus.updateAvailable ? '#22c55e22' : '#1e293b'}; color: {updateStatus.updateAvailable ? '#4ade80' : '#cbd5e1'};">
+                <span
+                  class="font-mono font-bold px-2 py-0.5 rounded cursor-help"
+                  style="background: {updateStatus.updateAvailable ? '#22c55e22' : '#1e293b'}; color: {updateStatus.updateAvailable ? '#4ade80' : '#cbd5e1'};"
+                  data-tooltip={updateStatus.publishedAt ? `Release ${updateStatus.tagName} publiée le ${formatDateTime(updateStatus.publishedAt)}` : updateStatus.tagName}
+                >
                   {updateStatus.tagName || `v${updateStatus.latestVersion}`}
                 </span>
+                {#if updateStatus.publishedAt}
+                  <span
+                    class="text-[11px] px-1.5 py-0.5 rounded cursor-help flex items-center gap-1"
+                    style="background: #33415544; color: #94a3b8;"
+                    data-tooltip={`Date et heure de publication sur GitHub : ${formatDateTime(updateStatus.publishedAt)}`}
+                  >
+                    📅 {formatDateTime(updateStatus.publishedAt)}
+                  </span>
+                {/if}
               {/if}
             </div>
           </div>
 
-          {#if updateStatus.updateAvailable}
-            <span class="px-2 py-0.5 rounded font-semibold" style="background: #22c55e22; color: #4ade80; border: 1px solid #22c55e44;">
-              ✨ Nouvelle version disponible !
-            </span>
-          {:else if updateStatus.ok}
-            <span class="px-2 py-0.5 rounded font-medium" style="background: #1e293b; color: #94a3b8;">
-              ✅ Vous êtes à jour
-            </span>
-          {/if}
+          <div class="flex items-center gap-2">
+            {#if updateStatus.checkedAt}
+              <span
+                class="text-[11px] cursor-help px-2 py-0.5 rounded"
+                style="background: #1e293b; color: #94a3b8;"
+                data-tooltip={`Vérification GitHub effectuée le ${formatDateTime(updateStatus.checkedAt)}`}
+              >
+                Vérifié à {new Date(updateStatus.checkedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            {/if}
+            {#if updateStatus.updateAvailable}
+              <span class="px-2 py-0.5 rounded font-semibold" style="background: #22c55e22; color: #4ade80; border: 1px solid #22c55e44;">
+                ✨ Nouvelle version disponible !
+              </span>
+            {:else if updateStatus.ok}
+              <span class="px-2 py-0.5 rounded font-medium" style="background: #1e293b; color: #94a3b8;">
+                ✅ Vous êtes à jour
+              </span>
+            {/if}
+          </div>
         </div>
 
         {#if !updateStatus.ok && updateStatus.error}
@@ -2032,10 +2070,19 @@
         {#if activeRelease && activeRelease.releaseNotes && !updateStatus.noReleasesYet}
           <div class="space-y-1.5">
             <div class="flex items-center justify-between flex-wrap gap-2 text-[11px]" style="color: var(--text-muted);">
-              <span class="font-semibold flex items-center gap-1.5">
+              <span class="font-semibold flex items-center gap-1.5 flex-wrap">
                 📋 Notes de version — <span class="font-bold text-slate-200">{activeRelease.name || activeRelease.tagName}</span>
                 {#if activeRelease.tagName === updateStatus.tagName}
                   <span class="px-1.5 py-0.2 rounded text-[10px]" style="background: #22c55e22; color: #4ade80;">Dernière release</span>
+                {/if}
+                {#if activeRelease.publishedAt}
+                  <span
+                    class="text-[10px] px-1.5 py-0.2 rounded cursor-help"
+                    style="background: #33415544; color: #94a3b8;"
+                    data-tooltip={`Date et heure de publication : ${formatDateTime(activeRelease.publishedAt)}`}
+                  >
+                    📅 Publiée le {formatDateTime(activeRelease.publishedAt)}
+                  </span>
                 {/if}
               </span>
               {#if selectedReleaseTag && selectedReleaseTag !== updateStatus.tagName}
@@ -2091,7 +2138,7 @@
                 >
                   {#each updateStatus.releases as rel}
                     <option value={rel.tagName}>
-                      {rel.tagName} — {rel.name} {rel.publishedAt ? `(${new Date(rel.publishedAt).toLocaleDateString('fr-FR')})` : ''} {rel.tagName === updateStatus.tagName ? '★ (Dernière)' : ''}
+                      {rel.tagName} — {rel.name} {rel.publishedAt ? `(${formatDateTime(rel.publishedAt)})` : ''} {rel.tagName === updateStatus.tagName ? '★ (Dernière)' : ''}
                     </option>
                   {/each}
                 </select>
@@ -2107,6 +2154,7 @@
                       style="background: {(selectedReleaseTag || updateStatus.tagName) === rel.tagName ? 'var(--accent)' : 'var(--bg-card)'};
                              color: {(selectedReleaseTag || updateStatus.tagName) === rel.tagName ? '#ffffff' : '#cbd5e1'};
                              border: 1px solid {(selectedReleaseTag || updateStatus.tagName) === rel.tagName ? 'var(--accent)' : 'var(--border)'};"
+                      data-tooltip={rel.publishedAt ? `Release ${rel.tagName} publiée le ${formatDateTime(rel.publishedAt)}` : rel.tagName}
                     >
                       {rel.tagName}
                     </button>
@@ -2126,8 +2174,9 @@
               type="button"
               onclick={installUpdate}
               disabled={isInstallingUpdate}
-              class="px-4 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
+              class="px-4 py-1.5 rounded-lg text-xs font-bold cursor-pointer shadow-md transition-transform hover:scale-102"
               style="background: #22c55e; color: #052e16; opacity: {isInstallingUpdate ? 0.6 : 1};"
+              data-tooltip={`Télécharger et installer ${updateStatus.tagName}${updateStatus.publishedAt ? ` (publiée le ${formatDateTime(updateStatus.publishedAt)})` : ''}`}
             >
               {isInstallingUpdate ? '⏳ Téléchargement & compilation en cours...' : `🚀 Installer la mise à jour (${updateStatus.tagName})`}
             </button>
