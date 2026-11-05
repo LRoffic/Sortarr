@@ -804,47 +804,12 @@
   <title>Sortarr — Configuration</title>
 </svelte:head>
 
-<div class="max-w-xl mx-auto">
-  <div class="flex items-center justify-between mb-1 gap-2 flex-wrap">
-    <h1 class="text-2xl font-bold">Configuration</h1>
-    {#if autoSaveStatus === 'saving'}
-      <span class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 animate-pulse"
-            style="background: #3b82f622; border: 1px solid #3b82f655; color: #60a5fa;">
-        ⏳ Enregistrement auto...
-      </span>
-    {:else if autoSaveStatus === 'saved'}
-      <span class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 transition-all"
-            style="background: #22c55e22; border: 1px solid #22c55e55; color: #4ade80;">
-        💾 Enregistré automatiquement
-      </span>
-    {:else if autoSaveStatus === 'error'}
-      <span class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5"
-            style="background: #ef444422; border: 1px solid #ef444455; color: #f87171;"
-            title={autoSaveError}>
-        ⚠️ Erreur auto-save
-      </span>
-    {:else}
-      <span class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 opacity-60"
-            style="background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);"
-            title="Toutes les modifications sont enregistrées automatiquement">
-        💾 Sauvegarde auto active
-      </span>
-    {/if}
-  </div>
-  <p class="text-sm mb-6" style="color: var(--text-muted);">
-    Paramètres de connexion à votre instance Prowlarr et aux services associés.
-  </p>
+<div class="max-w-5xl mx-auto px-2 sm:px-4">
+  <div class="flex flex-col lg:flex-row items-start justify-center gap-6">
 
-  <!-- Menu Aside d'Index et Navigation rapide (Smooth Scroll & Fixé à gauche au scroll) -->
-  <div class="mb-8">
-    {#if isScrolled}
-      <!-- Espace réservé pour éviter le saut de mise en page lors du passage en fixed -->
-      <div class="h-24 hidden lg:block"></div>
-    {/if}
+    <!-- Menu Aside d'Index et Navigation rapide (Sticky sur desktop, 바로 à côté du contenu central) -->
     <aside
-      class="settings-index-aside transition-all duration-300 z-40 {isScrolled
-        ? 'lg:fixed lg:left-3 xl:left-6 2xl:left-12 lg:top-20 lg:w-48 xl:w-52 shadow-2xl p-2.5 rounded-2xl border backdrop-blur-md'
-        : 'relative w-full rounded-2xl p-3.5 border shadow-xl backdrop-blur-md'}"
+      class="settings-index-aside w-full lg:w-48 xl:w-52 shrink-0 lg:sticky lg:top-20 z-30 rounded-2xl p-3 border shadow-xl backdrop-blur-md"
       style="background: #141722f8; border-color: #334155bb;"
       aria-label="Index de la configuration"
     >
@@ -852,18 +817,16 @@
         <div class="flex items-center gap-2">
           <span class="text-sm">📑</span>
           <span class="text-xs font-bold uppercase tracking-wider text-slate-200">
-            {isScrolled ? 'Index' : 'Index de configuration'}
+            Index
           </span>
         </div>
-        {#if !isScrolled}
-          <span class="text-[11px] text-purple-400 font-medium">
-            ⚡ Accès rapide
-          </span>
-        {/if}
+        <span class="text-[10px] text-purple-400 font-medium">
+          ⚡ Accès rapide
+        </span>
       </div>
 
-      <!-- Navigation : liste verticale si fixé à gauche lors du scroll, ou grille si au sommet de la colonne -->
-      <nav class="{isScrolled ? 'flex flex-col gap-1' : 'grid grid-cols-2 sm:grid-cols-3 gap-1.5'} text-xs">
+      <!-- Navigation : liste verticale sur desktop (lg:), grille sur petits écrans -->
+      <nav class="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-col gap-1 text-xs">
         <a
           href="#prowlarr"
           onclick={(e) => scrollToSection(e, 'prowlarr')}
@@ -915,11 +878,11 @@
         <a
           href="#security"
           onclick={(e) => scrollToSection(e, 'security')}
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800 {isScrolled ? '' : 'col-span-2 sm:col-span-3'} font-semibold"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800 font-semibold"
           style="background: #3b82f615; border-color: #3b82f655; color: #93c5fd;"
           title="Sécurité : Mot de passe, 2FA & reCAPTCHA"
         >
-          <span>🔐</span> <span class="truncate">{isScrolled ? 'Sécurité & 2FA' : '# Sécurité : Mot de passe, 2FA & reCAPTCHA'}</span>
+          <span>🔐</span> <span class="truncate">Sécurité & 2FA</span>
         </a>
         <a
           href="#update"
@@ -950,7 +913,7 @@
 
     <!-- Sur mobile (< lg), bouton flottant d'accès rapide à gauche lors du scroll -->
     {#if isScrolled}
-      <div class="lg:hidden fixed left-3 bottom-6 z-40">
+      <div class="lg:hidden fixed left-4 bottom-6 z-40">
         <button
           type="button"
           onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
@@ -963,7 +926,7 @@
 
         {#if mobileMenuOpen}
           <div
-            class="fixed left-3 bottom-16 w-56 rounded-2xl p-3 border shadow-2xl backdrop-blur-md z-50 flex flex-col gap-1 text-xs"
+            class="fixed left-4 bottom-16 w-56 rounded-2xl p-3 border shadow-2xl backdrop-blur-md z-50 flex flex-col gap-1 text-xs"
             style="background: #141722fa; border-color: #334155;"
           >
             <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider pb-1 border-b border-slate-700/50 mb-1">
@@ -983,7 +946,38 @@
         {/if}
       </div>
     {/if}
-  </div>
+
+    <!-- Colonne centrale de configuration -->
+    <div class="w-full max-w-xl min-w-0">
+      <div class="flex items-center justify-between mb-1 gap-2 flex-wrap">
+        <h1 class="text-2xl font-bold">Configuration</h1>
+        {#if autoSaveStatus === 'saving'}
+          <span class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 animate-pulse"
+                style="background: #3b82f622; border: 1px solid #3b82f655; color: #60a5fa;">
+            ⏳ Enregistrement auto...
+          </span>
+        {:else if autoSaveStatus === 'saved'}
+          <span class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 transition-all"
+                style="background: #22c55e22; border: 1px solid #22c55e55; color: #4ade80;">
+            💾 Enregistré automatiquement
+          </span>
+        {:else if autoSaveStatus === 'error'}
+          <span class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5"
+                style="background: #ef444422; border: 1px solid #ef444455; color: #f87171;"
+                title={autoSaveError}>
+            ⚠️ Erreur auto-save
+          </span>
+        {:else}
+          <span class="text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 opacity-60"
+                style="background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);"
+                title="Toutes les modifications sont enregistrées automatiquement">
+            💾 Sauvegarde auto active
+          </span>
+        {/if}
+      </div>
+      <p class="text-sm mb-6" style="color: var(--text-muted);">
+        Paramètres de connexion à votre instance Prowlarr et aux services associés.
+      </p>
 
   <!-- Connection status card -->
   {#if saveResult?.ok}
@@ -1458,143 +1452,145 @@
         {#if statsPaliers.mode === 'tracker'}
           <div class="text-[11px] text-purple-300/90 bg-purple-950/40 p-2.5 rounded-lg border border-purple-800/40 flex items-center gap-2">
             <span>💡</span>
-            <span>En mode <strong>Par tracker</strong>, réglez les objectifs propres à chaque tracker directement dans sa carte ci-dessous. Les valeurs ci-après servent de repli par défaut.</span>
+            <span>En mode <strong>Par tracker</strong>, configurez les objectifs propres à chaque tracker directement dans sa carte ci-dessous.</span>
           </div>
         {/if}
       </div>
 
-      <!-- Valeurs globales -->
-      <div class="p-3 rounded-lg space-y-3" style="background: var(--bg-card); border: 1px solid var(--border);">
-        <div class="flex items-center justify-between flex-wrap gap-2">
-          <div class="text-xs font-semibold text-slate-300">
-            {statsPaliers.mode === 'tracker' ? 'Valeurs globales par défaut :' : 'Valeurs des paliers globaux :'}
+      <!-- Valeurs globales (affichées uniquement en mode global) -->
+      {#if statsPaliers.mode === 'global'}
+        <div class="p-3 rounded-lg space-y-3" style="background: var(--bg-card); border: 1px solid var(--border);">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="text-xs font-semibold text-slate-300">
+              Valeurs des paliers globaux :
+            </div>
+            <button
+              type="button"
+              onclick={() => {
+                statsPaliers.global = { ...DEFAULT_PALIERS };
+              }}
+              class="text-[11px] text-purple-400 hover:text-purple-300 underline cursor-pointer"
+            >
+              Rétablir les valeurs par défaut
+            </button>
           </div>
-          <button
-            type="button"
-            onclick={() => {
-              statsPaliers.global = { ...DEFAULT_PALIERS };
-            }}
-            class="text-[11px] text-purple-400 hover:text-purple-300 underline cursor-pointer"
-          >
-            Rétablir les valeurs par défaut
-          </button>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div>
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-ratio">
+                Ratio actuel
+              </label>
+              <input
+                id="palier-ratio"
+                type="number"
+                step="0.1"
+                min="0.1"
+                max="100"
+                bind:value={statsPaliers.global.ratio}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+              />
+              <span class="text-[10px] text-slate-500">Défaut: 4.0</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-upload">
+                Upload (Go)
+              </label>
+              <input
+                id="palier-upload"
+                type="number"
+                step="1"
+                min="1"
+                bind:value={statsPaliers.global.uploadGB}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+              />
+              <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.uploadGB)}</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-download">
+                Download (Go)
+              </label>
+              <input
+                id="palier-download"
+                type="number"
+                step="1"
+                min="1"
+                bind:value={statsPaliers.global.downloadGB}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #cbd5e1;"
+              />
+              <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.downloadGB)}</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-buffer">
+                Buffer (Go)
+              </label>
+              <input
+                id="palier-buffer"
+                type="number"
+                step="1"
+                min="1"
+                bind:value={statsPaliers.global.bufferGB}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+              />
+              <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.bufferGB)}</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-points">
+                Points / Karma
+              </label>
+              <input
+                id="palier-points"
+                type="number"
+                step="500"
+                min="0"
+                bind:value={statsPaliers.global.points}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #facc15;"
+              />
+              <span class="text-[10px] text-slate-500">Défaut: 25 000</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-astra">
+                Astra (site)
+              </label>
+              <input
+                id="palier-astra"
+                type="number"
+                step="50"
+                min="0"
+                bind:value={statsPaliers.global.astra}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #c084fc;"
+              />
+              <span class="text-[10px] text-slate-500">Défaut: 1 000</span>
+            </div>
+
+            <div class="col-span-2 sm:col-span-2">
+              <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-seeds">
+                Seeds actifs
+              </label>
+              <input
+                id="palier-seeds"
+                type="number"
+                step="10"
+                min="0"
+                bind:value={statsPaliers.global.seeds}
+                class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+              />
+              <span class="text-[10px] text-slate-500">Défaut: 150</span>
+            </div>
+          </div>
         </div>
-
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-          <div>
-            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-ratio">
-              Ratio actuel
-            </label>
-            <input
-              id="palier-ratio"
-              type="number"
-              step="0.1"
-              min="0.1"
-              max="100"
-              bind:value={statsPaliers.global.ratio}
-              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
-            />
-            <span class="text-[10px] text-slate-500">Défaut: 4.0</span>
-          </div>
-
-          <div>
-            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-upload">
-              Upload (Go)
-            </label>
-            <input
-              id="palier-upload"
-              type="number"
-              step="1"
-              min="1"
-              bind:value={statsPaliers.global.uploadGB}
-              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
-            />
-            <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.uploadGB)}</span>
-          </div>
-
-          <div>
-            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-download">
-              Download (Go)
-            </label>
-            <input
-              id="palier-download"
-              type="number"
-              step="1"
-              min="1"
-              bind:value={statsPaliers.global.downloadGB}
-              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #cbd5e1;"
-            />
-            <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.downloadGB)}</span>
-          </div>
-
-          <div>
-            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-buffer">
-              Buffer (Go)
-            </label>
-            <input
-              id="palier-buffer"
-              type="number"
-              step="1"
-              min="1"
-              bind:value={statsPaliers.global.bufferGB}
-              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
-            />
-            <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.bufferGB)}</span>
-          </div>
-
-          <div>
-            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-points">
-              Points / Karma
-            </label>
-            <input
-              id="palier-points"
-              type="number"
-              step="500"
-              min="0"
-              bind:value={statsPaliers.global.points}
-              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #facc15;"
-            />
-            <span class="text-[10px] text-slate-500">Défaut: 25 000</span>
-          </div>
-
-          <div>
-            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-astra">
-              Astra (site)
-            </label>
-            <input
-              id="palier-astra"
-              type="number"
-              step="50"
-              min="0"
-              bind:value={statsPaliers.global.astra}
-              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #c084fc;"
-            />
-            <span class="text-[10px] text-slate-500">Défaut: 1 000</span>
-          </div>
-
-          <div class="col-span-2 sm:col-span-2">
-            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-seeds">
-              Seeds actifs
-            </label>
-            <input
-              id="palier-seeds"
-              type="number"
-              step="10"
-              min="0"
-              bind:value={statsPaliers.global.seeds}
-              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
-              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
-            />
-            <span class="text-[10px] text-slate-500">Défaut: 150</span>
-          </div>
-        </div>
-      </div>
+      {/if}
 
       {#if statsPaliers.mode === 'tracker'}
         <!-- Liste des paliers individuels par tracker -->
@@ -1605,7 +1601,7 @@
                 <span>📊</span> Objectifs personnalisés par tracker ({data.indexers?.length ?? 0})
               </div>
               <div class="text-[11px]" style="color: var(--text-muted);">
-                Renseignez les paliers propres à chaque tracker. Laissez vide pour hériter des valeurs globales ci-dessus.
+                Renseignez les paliers d'objectifs pour chaque tracker.
               </div>
             </div>
           </div>
@@ -1636,10 +1632,6 @@
                         <span class="text-[10px] px-1.5 py-0.2 rounded-full font-semibold" style="background: #7c3aed22; color: #c4b5fd; border: 1px solid #7c3aed55;">
                           🎯 Personnalisé
                         </span>
-                      {:else}
-                        <span class="text-[10px] px-1.5 py-0.2 rounded-full font-medium" style="background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border);">
-                          🌐 Hérité (global)
-                        </span>
                       {/if}
                     </div>
 
@@ -1651,7 +1643,7 @@
                         }}
                         class="text-[11px] text-purple-400 hover:text-purple-300 underline cursor-pointer"
                       >
-                        Rétablir valeurs globales
+                        Réinitialiser
                       </button>
                     {/if}
                   </div>
@@ -1660,13 +1652,13 @@
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
                       <div>
                         <label class="block text-[10px] text-slate-400">
-                          Ratio ({statsPaliers.global.ratio})
+                          Ratio
                           <input
                             type="number"
                             step="0.1"
                             min="0.1"
                             bind:value={t.paliers.ratio}
-                            placeholder={String(statsPaliers.global.ratio)}
+                            placeholder="ex: 4.0"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
                           />
@@ -1674,13 +1666,13 @@
                       </div>
                       <div>
                         <label class="block text-[10px] text-slate-400">
-                          Upload Go ({statsPaliers.global.uploadGB})
+                          Upload (Go)
                           <input
                             type="number"
                             step="1"
                             min="1"
                             bind:value={t.paliers.uploadGB}
-                            placeholder={String(statsPaliers.global.uploadGB)}
+                            placeholder="ex: 2048"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
                           />
@@ -1688,13 +1680,13 @@
                       </div>
                       <div>
                         <label class="block text-[10px] text-slate-400">
-                          Download Go ({statsPaliers.global.downloadGB})
+                          Download (Go)
                           <input
                             type="number"
                             step="1"
                             min="1"
                             bind:value={t.paliers.downloadGB}
-                            placeholder={String(statsPaliers.global.downloadGB)}
+                            placeholder="ex: 2048"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-card); border: 1px solid var(--border); color: #cbd5e1;"
                           />
@@ -1702,13 +1694,13 @@
                       </div>
                       <div>
                         <label class="block text-[10px] text-slate-400">
-                          Buffer Go ({statsPaliers.global.bufferGB})
+                          Buffer (Go)
                           <input
                             type="number"
                             step="1"
                             min="1"
                             bind:value={t.paliers.bufferGB}
-                            placeholder={String(statsPaliers.global.bufferGB)}
+                            placeholder="ex: 1024"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
                           />
@@ -1716,13 +1708,13 @@
                       </div>
                       <div>
                         <label class="block text-[10px] text-slate-400">
-                          Points ({statsPaliers.global.points})
+                          Points / Karma
                           <input
                             type="number"
                             step="500"
                             min="0"
                             bind:value={t.paliers.points}
-                            placeholder={String(statsPaliers.global.points)}
+                            placeholder="ex: 25000"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-card); border: 1px solid var(--border); color: #facc15;"
                           />
@@ -1730,13 +1722,13 @@
                       </div>
                       <div>
                         <label class="block text-[10px] text-slate-400">
-                          Astra ({statsPaliers.global.astra})
+                          Astra
                           <input
                             type="number"
                             step="50"
                             min="0"
                             bind:value={t.paliers.astra}
-                            placeholder={String(statsPaliers.global.astra)}
+                            placeholder="ex: 1000"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-card); border: 1px solid var(--border); color: #c084fc;"
                           />
@@ -1744,13 +1736,13 @@
                       </div>
                       <div class="col-span-2 sm:col-span-2">
                         <label class="block text-[10px] text-slate-400">
-                          Seeds ({statsPaliers.global.seeds})
+                          Seeds
                           <input
                             type="number"
                             step="10"
                             min="0"
                             bind:value={t.paliers.seeds}
-                            placeholder={String(statsPaliers.global.seeds)}
+                            placeholder="ex: 150"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
                           />
@@ -2159,7 +2151,7 @@
                           }}
                           class="text-[10px] text-purple-400 hover:text-purple-300 underline cursor-pointer"
                         >
-                          Rétablir valeurs globales
+                          Réinitialiser
                         </button>
                       {/if}
                     </div>
@@ -2167,13 +2159,13 @@
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
                       <div>
                         <label class="block text-[10px] text-slate-400">
-                          Ratio ({statsPaliers.global.ratio})
+                          Ratio
                           <input
                             type="number"
                             step="0.1"
                             min="0.1"
                             bind:value={t.paliers.ratio}
-                            placeholder={String(statsPaliers.global.ratio)}
+                            placeholder="ex: 4.0"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
                           />
@@ -2181,13 +2173,13 @@
                       </div>
                       <div>
                         <label class="block text-[10px] text-slate-400">
-                          Upload Go ({statsPaliers.global.uploadGB})
+                          Upload (Go)
                           <input
                             type="number"
                             step="1"
                             min="1"
                             bind:value={t.paliers.uploadGB}
-                            placeholder={String(statsPaliers.global.uploadGB)}
+                            placeholder="ex: 2048"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
                           />
@@ -2195,13 +2187,13 @@
                       </div>
                       <div>
                         <label class="block text-[10px] text-slate-400">
-                          Download Go ({statsPaliers.global.downloadGB})
+                          Download (Go)
                           <input
                             type="number"
                             step="1"
                             min="1"
                             bind:value={t.paliers.downloadGB}
-                            placeholder={String(statsPaliers.global.downloadGB)}
+                            placeholder="ex: 2048"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-secondary); border: 1px solid var(--border); color: #cbd5e1;"
                           />
@@ -2209,13 +2201,13 @@
                       </div>
                       <div>
                         <label class="block text-[10px] text-slate-400">
-                          Buffer Go ({statsPaliers.global.bufferGB})
+                          Buffer (Go)
                           <input
                             type="number"
                             step="1"
                             min="1"
                             bind:value={t.paliers.bufferGB}
-                            placeholder={String(statsPaliers.global.bufferGB)}
+                            placeholder="ex: 1024"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
                           />
@@ -2223,13 +2215,13 @@
                       </div>
                       <div>
                         <label class="block text-[10px] text-slate-400">
-                          Points ({statsPaliers.global.points})
+                          Points / Karma
                           <input
                             type="number"
                             step="500"
                             min="0"
                             bind:value={t.paliers.points}
-                            placeholder={String(statsPaliers.global.points)}
+                            placeholder="ex: 25000"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-secondary); border: 1px solid var(--border); color: #facc15;"
                           />
@@ -2237,13 +2229,13 @@
                       </div>
                       <div>
                         <label class="block text-[10px] text-slate-400">
-                          Astra ({statsPaliers.global.astra})
+                          Astra
                           <input
                             type="number"
                             step="50"
                             min="0"
                             bind:value={t.paliers.astra}
-                            placeholder={String(statsPaliers.global.astra)}
+                            placeholder="ex: 1000"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-secondary); border: 1px solid var(--border); color: #c084fc;"
                           />
@@ -2251,13 +2243,13 @@
                       </div>
                       <div class="col-span-2 sm:col-span-2">
                         <label class="block text-[10px] text-slate-400">
-                          Seeds ({statsPaliers.global.seeds})
+                          Seeds
                           <input
                             type="number"
                             step="10"
                             min="0"
                             bind:value={t.paliers.seeds}
-                            placeholder={String(statsPaliers.global.seeds)}
+                            placeholder="ex: 150"
                             class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
                             style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
                           />
@@ -3140,7 +3132,9 @@
     {/if}
   </div>
 
-</div>
+    </div> <!-- fin de la colonne centrale -->
+  </div> <!-- fin du flex -->
+</div> <!-- fin du max-w-5xl -->
 
 <!-- Notification toast en bas à gauche lors de la sauvegarde -->
 {#if autoSaveStatus === 'saved'}
