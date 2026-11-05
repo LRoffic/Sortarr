@@ -111,12 +111,26 @@
   let hasMounted = false;
   let autoSaveTimer = null;
 
+  // Positionnement de l'index à gauche lors du scroll
+  let isScrolled = $state(false);
+  let mobileMenuOpen = $state(false);
+
   onMount(() => {
     checkUpdates(false);
     loadContributors(false);
     setTimeout(() => {
       hasMounted = true;
     }, 400);
+
+    const onScroll = () => {
+      isScrolled = window.scrollY > 120;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+    };
   });
 
   // untrack() prevents Svelte 5 from warning about capturing initial prop values in $state
@@ -821,109 +835,155 @@
     Paramètres de connexion à votre instance Prowlarr et aux services associés.
   </p>
 
-  <!-- Menu Aside d'Index et Navigation rapide (Smooth Scroll) -->
-  <aside
-    class="settings-index-aside sticky top-16 z-30 mb-8 rounded-2xl p-3.5 border shadow-xl backdrop-blur-md transition-all"
-    style="background: #141722f5; border-color: #334155aa;"
-    aria-label="Index de la configuration"
-  >
-    <div class="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-700/50">
-      <div class="flex items-center gap-2">
-        <span class="text-sm">📑</span>
-        <span class="text-xs font-bold uppercase tracking-wider text-slate-200">
-          Index de configuration
-        </span>
+  <!-- Menu Aside d'Index et Navigation rapide (Smooth Scroll & Fixé à gauche au scroll) -->
+  <div class="mb-8">
+    {#if isScrolled}
+      <!-- Espace réservé pour éviter le saut de mise en page lors du passage en fixed -->
+      <div class="h-24 hidden lg:block"></div>
+    {/if}
+    <aside
+      class="settings-index-aside transition-all duration-300 z-40 {isScrolled
+        ? 'lg:fixed lg:left-3 xl:left-6 2xl:left-12 lg:top-20 lg:w-48 xl:w-52 shadow-2xl p-2.5 rounded-2xl border backdrop-blur-md'
+        : 'relative w-full rounded-2xl p-3.5 border shadow-xl backdrop-blur-md'}"
+      style="background: #141722f8; border-color: #334155bb;"
+      aria-label="Index de la configuration"
+    >
+      <div class="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-700/50">
+        <div class="flex items-center gap-2">
+          <span class="text-sm">📑</span>
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-200">
+            {isScrolled ? 'Index' : 'Index de configuration'}
+          </span>
+        </div>
+        {#if !isScrolled}
+          <span class="text-[11px] text-purple-400 font-medium">
+            ⚡ Accès rapide
+          </span>
+        {/if}
       </div>
-      <span class="text-[11px] text-purple-400 font-medium">
-        ⚡ Accès rapide
-      </span>
-    </div>
 
-    <!-- Grille de raccourcis avec smooth scroll -->
-    <nav class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs">
-      <a
-        href="#prowlarr"
-        onclick={(e) => scrollToSection(e, 'prowlarr')}
-        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-      >
-        <span>🌐</span> <span class="truncate">Prowlarr</span>
-      </a>
-      <a
-        href="#autosort"
-        onclick={(e) => scrollToSection(e, 'autosort')}
-        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-      >
-        <span>⚡</span> <span class="truncate">Tri & Cycle</span>
-      </a>
-      <a
-        href="#tagging"
-        onclick={(e) => scrollToSection(e, 'tagging')}
-        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-      >
-        <span>🏷️</span> <span class="truncate">Marquage Arr</span>
-      </a>
-      <a
-        href="#paliers"
-        onclick={(e) => scrollToSection(e, 'paliers')}
-        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800 font-medium"
-        style="background: #7c3aed15; border-color: #7c3aed55; color: #c4b5fd;"
-      >
-        <span>🎯</span> <span class="truncate">Paliers stats</span>
-      </a>
-      <a
-        href="#apiratio"
-        onclick={(e) => scrollToSection(e, 'apiratio')}
-        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-      >
-        <span>📡</span> <span class="truncate">api-ratio</span>
-      </a>
-      <a
-        href="#trackers"
-        onclick={(e) => scrollToSection(e, 'trackers')}
-        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-      >
-        <span>📊</span> <span class="truncate">Trackers</span>
-      </a>
-      <a
-        href="#security"
-        onclick={(e) => scrollToSection(e, 'security')}
-        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800 col-span-2 sm:col-span-3 font-semibold"
-        style="background: #3b82f615; border-color: #3b82f655; color: #93c5fd;"
-        title="Sécurité : Mot de passe, 2FA & reCAPTCHA"
-      >
-        <span>🔐</span> <span class="truncate"># Sécurité : Mot de passe, 2FA &amp; reCAPTCHA</span>
-      </a>
-      <a
-        href="#update"
-        onclick={(e) => scrollToSection(e, 'update')}
-        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-      >
-        <span>🔄</span> <span class="truncate">Mises à jour</span>
-      </a>
-      <a
-        href="#telemetry"
-        onclick={(e) => scrollToSection(e, 'telemetry')}
-        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-      >
-        <span>🛰️</span> <span class="truncate">Télémétrie</span>
-      </a>
-      <a
-        href="#contributors"
-        onclick={(e) => scrollToSection(e, 'contributors')}
-        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-      >
-        <span>👥</span> <span class="truncate">Contributeurs</span>
-      </a>
-    </nav>
-  </aside>
+      <!-- Navigation : liste verticale si fixé à gauche lors du scroll, ou grille si au sommet de la colonne -->
+      <nav class="{isScrolled ? 'flex flex-col gap-1' : 'grid grid-cols-2 sm:grid-cols-3 gap-1.5'} text-xs">
+        <a
+          href="#prowlarr"
+          onclick={(e) => scrollToSection(e, 'prowlarr')}
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+        >
+          <span>🌐</span> <span class="truncate">Prowlarr</span>
+        </a>
+        <a
+          href="#autosort"
+          onclick={(e) => scrollToSection(e, 'autosort')}
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+        >
+          <span>⚡</span> <span class="truncate">Tri & Cycle</span>
+        </a>
+        <a
+          href="#tagging"
+          onclick={(e) => scrollToSection(e, 'tagging')}
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+        >
+          <span>🏷️</span> <span class="truncate">Marquage Arr</span>
+        </a>
+        <a
+          href="#paliers"
+          onclick={(e) => scrollToSection(e, 'paliers')}
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800 font-medium"
+          style="background: #7c3aed15; border-color: #7c3aed55; color: #c4b5fd;"
+        >
+          <span>🎯</span> <span class="truncate">Paliers stats</span>
+        </a>
+        <a
+          href="#apiratio"
+          onclick={(e) => scrollToSection(e, 'apiratio')}
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+        >
+          <span>📡</span> <span class="truncate">api-ratio</span>
+        </a>
+        <a
+          href="#trackers"
+          onclick={(e) => scrollToSection(e, 'trackers')}
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+        >
+          <span>📊</span> <span class="truncate">Trackers</span>
+        </a>
+        <a
+          href="#security"
+          onclick={(e) => scrollToSection(e, 'security')}
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800 {isScrolled ? '' : 'col-span-2 sm:col-span-3'} font-semibold"
+          style="background: #3b82f615; border-color: #3b82f655; color: #93c5fd;"
+          title="Sécurité : Mot de passe, 2FA & reCAPTCHA"
+        >
+          <span>🔐</span> <span class="truncate">{isScrolled ? 'Sécurité & 2FA' : '# Sécurité : Mot de passe, 2FA & reCAPTCHA'}</span>
+        </a>
+        <a
+          href="#update"
+          onclick={(e) => scrollToSection(e, 'update')}
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+        >
+          <span>🔄</span> <span class="truncate">Mises à jour</span>
+        </a>
+        <a
+          href="#telemetry"
+          onclick={(e) => scrollToSection(e, 'telemetry')}
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+        >
+          <span>🛰️</span> <span class="truncate">Télémétrie</span>
+        </a>
+        <a
+          href="#contributors"
+          onclick={(e) => scrollToSection(e, 'contributors')}
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+        >
+          <span>👥</span> <span class="truncate">Contributeurs</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Sur mobile (< lg), bouton flottant d'accès rapide à gauche lors du scroll -->
+    {#if isScrolled}
+      <div class="lg:hidden fixed left-3 bottom-6 z-40">
+        <button
+          type="button"
+          onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
+          class="flex items-center gap-2 px-3.5 py-2.5 rounded-full shadow-2xl font-semibold text-xs border backdrop-blur-md cursor-pointer transition-transform active:scale-95"
+          style="background: #1e1b4b; border-color: #7c3aed; color: #e9d5ff;"
+        >
+          <span>📑</span>
+          <span>Index {mobileMenuOpen ? '▲' : '▼'}</span>
+        </button>
+
+        {#if mobileMenuOpen}
+          <div
+            class="fixed left-3 bottom-16 w-56 rounded-2xl p-3 border shadow-2xl backdrop-blur-md z-50 flex flex-col gap-1 text-xs"
+            style="background: #141722fa; border-color: #334155;"
+          >
+            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider pb-1 border-b border-slate-700/50 mb-1">
+              Index de configuration
+            </div>
+            <a href="#prowlarr" onclick={(e) => { scrollToSection(e, 'prowlarr'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">🌐 Prowlarr</a>
+            <a href="#autosort" onclick={(e) => { scrollToSection(e, 'autosort'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">⚡ Tri & Cycle</a>
+            <a href="#tagging" onclick={(e) => { scrollToSection(e, 'tagging'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">🏷️ Marquage Arr</a>
+            <a href="#paliers" onclick={(e) => { scrollToSection(e, 'paliers'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-purple-300 font-medium">🎯 Paliers stats</a>
+            <a href="#apiratio" onclick={(e) => { scrollToSection(e, 'apiratio'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">📡 api-ratio</a>
+            <a href="#trackers" onclick={(e) => { scrollToSection(e, 'trackers'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">📊 Trackers</a>
+            <a href="#security" onclick={(e) => { scrollToSection(e, 'security'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-blue-300 font-medium">🔐 Sécurité & 2FA</a>
+            <a href="#update" onclick={(e) => { scrollToSection(e, 'update'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">🔄 Mises à jour</a>
+            <a href="#telemetry" onclick={(e) => { scrollToSection(e, 'telemetry'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">🛰️ Télémétrie</a>
+            <a href="#contributors" onclick={(e) => { scrollToSection(e, 'contributors'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">👥 Contributeurs</a>
+          </div>
+        {/if}
+      </div>
+    {/if}
+  </div>
 
   <!-- Connection status card -->
   {#if saveResult?.ok}
@@ -1535,6 +1595,175 @@
           </div>
         </div>
       </div>
+
+      {#if statsPaliers.mode === 'tracker'}
+        <!-- Liste des paliers individuels par tracker -->
+        <div class="p-3 rounded-lg space-y-3" style="background: var(--bg-card); border: 1px solid var(--border);">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <div class="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                <span>📊</span> Objectifs personnalisés par tracker ({data.indexers?.length ?? 0})
+              </div>
+              <div class="text-[11px]" style="color: var(--text-muted);">
+                Renseignez les paliers propres à chaque tracker. Laissez vide pour hériter des valeurs globales ci-dessus.
+              </div>
+            </div>
+          </div>
+
+          {#if !data.indexers?.length}
+            <div class="p-4 rounded-lg text-center text-xs" style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-muted);">
+              ⚠️ Aucun indexeur détecté. Configurez d'abord la clé API Prowlarr pour lister vos trackers.
+            </div>
+          {:else}
+            <div class="space-y-3">
+              {#each data.indexers as idx (idx.id)}
+                {@const t = trackers[idx.id]}
+                {@const logoUrl = getTrackerLogo(idx)}
+                {@const isCustom = t?.paliers && Object.values(t.paliers).some(v => v !== '' && v !== null && v !== undefined)}
+                <div class="rounded-xl p-3 border transition-all" style="background: var(--bg-secondary); border-color: {isCustom ? '#7c3aed66' : 'var(--border)'};">
+                  <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="w-6 h-6 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
+                            style="background: #0b0f19; border: 1px solid var(--border);">
+                        {#if logoUrl && !failedLogos[idx.id]}
+                          <img src={logoUrl} alt={idx.name} class="w-4 h-4 object-contain" onerror={() => { failedLogos[idx.id] = true; }} />
+                        {:else}
+                          <span class="text-[9px] font-bold text-purple-400">{getTrackerInitials(idx.name)}</span>
+                        {/if}
+                      </span>
+                      <span class="text-xs font-semibold text-slate-200">{idx.name}</span>
+                      {#if isCustom}
+                        <span class="text-[10px] px-1.5 py-0.2 rounded-full font-semibold" style="background: #7c3aed22; color: #c4b5fd; border: 1px solid #7c3aed55;">
+                          🎯 Personnalisé
+                        </span>
+                      {:else}
+                        <span class="text-[10px] px-1.5 py-0.2 rounded-full font-medium" style="background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border);">
+                          🌐 Hérité (global)
+                        </span>
+                      {/if}
+                    </div>
+
+                    {#if isCustom}
+                      <button
+                        type="button"
+                        onclick={() => {
+                          if (t) t.paliers = { ratio: '', uploadGB: '', downloadGB: '', bufferGB: '', points: '', astra: '', seeds: '' };
+                        }}
+                        class="text-[11px] text-purple-400 hover:text-purple-300 underline cursor-pointer"
+                      >
+                        Rétablir valeurs globales
+                      </button>
+                    {/if}
+                  </div>
+
+                  {#if t}
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Ratio ({statsPaliers.global.ratio})
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0.1"
+                            bind:value={t.paliers.ratio}
+                            placeholder={String(statsPaliers.global.ratio)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Upload Go ({statsPaliers.global.uploadGB})
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            bind:value={t.paliers.uploadGB}
+                            placeholder={String(statsPaliers.global.uploadGB)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Download Go ({statsPaliers.global.downloadGB})
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            bind:value={t.paliers.downloadGB}
+                            placeholder={String(statsPaliers.global.downloadGB)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #cbd5e1;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Buffer Go ({statsPaliers.global.bufferGB})
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            bind:value={t.paliers.bufferGB}
+                            placeholder={String(statsPaliers.global.bufferGB)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Points ({statsPaliers.global.points})
+                          <input
+                            type="number"
+                            step="500"
+                            min="0"
+                            bind:value={t.paliers.points}
+                            placeholder={String(statsPaliers.global.points)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #facc15;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Astra ({statsPaliers.global.astra})
+                          <input
+                            type="number"
+                            step="50"
+                            min="0"
+                            bind:value={t.paliers.astra}
+                            placeholder={String(statsPaliers.global.astra)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #c084fc;"
+                          />
+                        </label>
+                      </div>
+                      <div class="col-span-2 sm:col-span-2">
+                        <label class="block text-[10px] text-slate-400">
+                          Seeds ({statsPaliers.global.seeds})
+                          <input
+                            type="number"
+                            step="10"
+                            min="0"
+                            bind:value={t.paliers.seeds}
+                            placeholder={String(statsPaliers.global.seeds)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-card); border: 1px solid var(--border); color: #4ade80;"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
     </div>
 
     <!-- ── Trackers : stats réelles (ratio / buffer / freeleech) ── -->
