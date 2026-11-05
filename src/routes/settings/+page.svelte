@@ -117,6 +117,7 @@
   }
 
   async function syncTagsNow() {
+    taggingEnabled = true;
     isSyncingTags = true;
     syncTagsResult = null;
     try {
@@ -124,7 +125,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          taggingEnabled,
+          taggingEnabled: true,
           taggingTag,
           taggingRatioThreshold,
           taggingExcludeFreeleech,

@@ -502,12 +502,17 @@ export async function fetchDraupnirrStats(baseUrl, apiKey) {
   });
 }
 
-/** AstraTorrent : GET https://astratorrent.la/api/user.php?apikey=... */
+/** AstraTorrent : GET https://astratorrent.la/api/user.php?apikey=... & bonus.php?passkey=... */
 export async function fetchAstraStats(baseUrl, apiKey) {
   const origin = (!baseUrl || baseUrl.includes('jackett'))
     ? 'https://astratorrent.la'
     : baseUrl.replace(/\/+$/, '').replace(/\/api(\/.*)?$/, '');
-  const d = await fetchJson(`${origin}/api/user.php?apikey=${encodeURIComponent(apiKey)}`);
+
+  const [d, bonusData] = await Promise.all([
+    fetchJson(`${origin}/api/user.php?apikey=${encodeURIComponent(apiKey)}`),
+    fetchJson(`${origin}/api/bonus.php?passkey=${encodeURIComponent(apiKey)}`).catch(() => null)
+  ]);
+
   if (d?.status && d.status !== 'success') {
     throw new Error(d.message || d.error || `Erreur Astra: ${d.status}`);
   }
@@ -516,15 +521,37 @@ export async function fetchAstraStats(baseUrl, apiKey) {
   if (uploaded === null && downloaded === null) {
     throw new Error(`Réponse Astra inattendue (champs: ${Object.keys(d || {}).slice(0, 12).join(', ')})`);
   }
+
+  // Monnaie 1 : KARMA (points de seed / rente horaire)
+  const karma = toNumber(d?.karma ?? d?.bonus_points ?? bonusData?.karma ?? bonusData?.bonus_points);
+  const ptsPerHour = toNumber(bonusData?.pts_per_hour ?? bonusData?.pts_per_hour_base);
+
+  // Monnaie 2 : ASTRA (monnaie du site / jetons)
+  const astra = toNumber(
+    d?.astra ?? d?.astras ?? d?.coins ?? d?.tokens ??
+    bonusData?.astra ?? bonusData?.astras ?? bonusData?.tokens
+  );
+
   const extraBadges = [];
-  if (d.active_contracts != null) extraBadges.push(`📜 ${d.active_contracts} contrat(s)`);
+  if (astra !== null && astra !== undefined) {
+    extraBadges.push(`🪙 ${astra.toLocaleString('fr-FR')} Astra${astra > 1 ? 's' : ''}`);
+  }
+  if (d.active_contracts != null) {
+    extraBadges.push(`📜 ${d.active_contracts} contrat(s)`);
+  }
+  if (bonusData?.reactor_telemetry?.net_buffer_gb) {
+    extraBadges.push(`🛡️ Buffer +${bonusData.reactor_telemetry.net_buffer_gb} Go`);
+  }
+
   return buildStats({
     uploaded,
     downloaded,
     ratio: toNumber(d.ratio),
-    points: toNumber(d.bonus_points ?? d.karma),
-    pointsLabel: 'KARMA / ASTRA',
-    seeding: toNumber(d.seeding),
+    points: karma,
+    pointsLabel: 'KARMA',
+    pointsPerHour: ptsPerHour,
+    flTokens: astra,
+    seeding: toNumber(d.seeding ?? bonusData?.active_seeds),
     leeching: toNumber(d.leeching),
     extraBadges,
     freeleech: typeof d.freeleech === 'boolean' ? d.freeleech : null

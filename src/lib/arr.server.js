@@ -184,7 +184,7 @@ export async function syncAllTags(customEnriched = null, overrideConfig = null) 
   if (overrideConfig && typeof overrideConfig === 'object') {
     config = {
       ...config,
-      taggingEnabled: overrideConfig.taggingEnabled !== undefined ? !!overrideConfig.taggingEnabled : config.taggingEnabled,
+      taggingEnabled: overrideConfig.taggingEnabled !== undefined ? !!overrideConfig.taggingEnabled : true,
       taggingTag: overrideConfig.taggingTag ? String(overrideConfig.taggingTag).trim() : config.taggingTag,
       taggingRatioThreshold: overrideConfig.taggingRatioThreshold !== undefined
         ? (typeof overrideConfig.taggingRatioThreshold === 'number'
