@@ -359,6 +359,14 @@
                   {/each}
                 </div>
               {/if}
+
+              <!-- Petite barre animée de progression des points -->
+              <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                <div
+                  class="h-full rounded-full stat-bar-grow-x"
+                  style="width: {Math.min(100, Math.max(12, ((idx.tracker.points ?? 0) / 25000) * 100))}%; background: #facc15;"
+                ></div>
+              </div>
             </div>
           </div>
         {/each}
@@ -482,49 +490,79 @@
             </div>
           {:else if indexer.tracker}
             <div class="hidden sm:grid grid-cols-6 gap-3.5 text-xs text-right flex-shrink-0">
-              <div>
-                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">RATIO</div>
-                <div class="font-bold text-sm" style="color: {getRatioColor(indexer.tracker)};">
-                  {formatRatio(indexer.tracker)}
-                </div>
-              </div>
-              <div>
-                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">UPLOAD</div>
-                <div class="font-semibold" style="color: #4ade80;">{formatBytes(indexer.tracker.uploaded)}</div>
-              </div>
-              <div>
-                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">DOWNLOAD</div>
-                <div class="font-semibold">{formatBytes(indexer.tracker.downloaded)}</div>
-              </div>
-              <div>
-                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">BUFFER</div>
-                <div class="font-semibold" style="color: {indexer.tracker.buffer < 0 ? '#ef4444' : '#4ade80'};">
-                  {indexer.tracker.infinite && indexer.tracker.buffer === null ? '∞' : formatBytes(indexer.tracker.buffer)}
-                </div>
-              </div>
-              <div>
-                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
-                  {indexer.tracker.pointsLabel || 'POINTS'}
-                </div>
-                <div class="font-bold" style="color: #facc15;">
-                  {formatPoints(indexer.tracker.points)}
-                </div>
-                {#if indexer.tracker.pointsPerHour}
-                  <div class="text-[10px] font-mono" style="color: #4ade80;">
-                    +{indexer.tracker.pointsPerHour}/h
+              <div class="flex flex-col justify-between">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">RATIO</div>
+                  <div class="font-bold text-sm" style="color: {getRatioColor(indexer.tracker)};">
+                    {formatRatio(indexer.tracker)}
                   </div>
-                {/if}
-              </div>
-              <div>
-                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">SEEDS</div>
-                <div class="font-semibold" style="color: #4ade80;">
-                  {indexer.tracker.seeding !== null && indexer.tracker.seeding !== undefined ? indexer.tracker.seeding : '—'}
                 </div>
-                {#if indexer.tracker.leeching}
-                  <div class="text-[10px] font-mono" style="color: #fb923c;" title="Torrents en téléchargement (leech)">
-                    ⬇️ {indexer.tracker.leeching} DL
+                <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {indexer.tracker.infinite ? 100 : Math.min(100, Math.max(12, ((indexer.tracker.ratio ?? 0) / 4) * 100))}%; background: {getRatioColor(indexer.tracker)};"></div>
+                </div>
+              </div>
+              <div class="flex flex-col justify-between">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">UPLOAD</div>
+                  <div class="font-semibold" style="color: #4ade80;">{formatBytes(indexer.tracker.uploaded)}</div>
+                </div>
+                <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.uploaded ?? 0) / (2 * 1024 ** 4)) * 100))}%; background: #4ade80;"></div>
+                </div>
+              </div>
+              <div class="flex flex-col justify-between">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">DOWNLOAD</div>
+                  <div class="font-semibold">{formatBytes(indexer.tracker.downloaded)}</div>
+                </div>
+                <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.downloaded ?? 0) / (2 * 1024 ** 4)) * 100))}%; background: #94a3b8;"></div>
+                </div>
+              </div>
+              <div class="flex flex-col justify-between">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">BUFFER</div>
+                  <div class="font-semibold" style="color: {indexer.tracker.buffer < 0 ? '#ef4444' : '#4ade80'};">
+                    {indexer.tracker.infinite && indexer.tracker.buffer === null ? '∞' : formatBytes(indexer.tracker.buffer)}
                   </div>
-                {/if}
+                </div>
+                <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {indexer.tracker.infinite ? 100 : Math.min(100, Math.max(12, (Math.abs(indexer.tracker.buffer ?? 0) / (1024 ** 4)) * 100))}%; background: {indexer.tracker.buffer < 0 ? '#ef4444' : '#4ade80'};"></div>
+                </div>
+              </div>
+              <div class="flex flex-col justify-between">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
+                    {indexer.tracker.pointsLabel || 'POINTS'}
+                  </div>
+                  <div class="font-bold" style="color: #facc15;">
+                    {formatPoints(indexer.tracker.points)}
+                  </div>
+                  {#if indexer.tracker.pointsPerHour}
+                    <div class="text-[10px] font-mono" style="color: #4ade80;">
+                      +{indexer.tracker.pointsPerHour}/h
+                    </div>
+                  {/if}
+                </div>
+                <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.points ?? 0) / 25000) * 100))}%; background: #facc15;"></div>
+                </div>
+              </div>
+              <div class="flex flex-col justify-between">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">SEEDS</div>
+                  <div class="font-semibold" style="color: #4ade80;">
+                    {indexer.tracker.seeding !== null && indexer.tracker.seeding !== undefined ? indexer.tracker.seeding : '—'}
+                  </div>
+                  {#if indexer.tracker.leeching}
+                    <div class="text-[10px] font-mono" style="color: #fb923c;" title="Torrents en téléchargement (leech)">
+                      ⬇️ {indexer.tracker.leeching} DL
+                    </div>
+                  {/if}
+                </div>
+                <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.seeding ?? 0) / 150) * 100))}%; background: #4ade80;"></div>
+                </div>
               </div>
             </div>
           {:else}

@@ -353,6 +353,14 @@
               </div>
             {/if}
 
+            <!-- Petite barre animée de progression des points/monnaie -->
+            <div class="h-1 w-full rounded-full overflow-hidden my-0.5" style="background: rgba(255,255,255,0.06);">
+              <div
+                class="h-full rounded-full stat-bar-grow-x"
+                style="width: {Math.min(100, Math.max(12, ((pts ?? 0) / 25000) * 100))}%; background: {isAstra ? 'linear-gradient(90deg, #facc15, #c084fc)' : '#facc15'};"
+              ></div>
+            </div>
+
             <div class="flex flex-wrap items-center justify-between gap-1 pt-1" style="border-top: 1px solid #1e293b;">
               <div class="flex flex-wrap items-center gap-1">
                 {#if pph !== null && pph !== undefined && deltaPts !== null && deltaPts !== 0}
@@ -596,121 +604,156 @@
 
           <!-- KPIs actuels du jour (Ratio, Upload, Download, Buffer, Points/Karma, Astra, Seeds) -->
           <div class="grid grid-cols-2 sm:grid-cols-3 {isAstra ? 'lg:grid-cols-7' : 'lg:grid-cols-6'} gap-2.5 text-right">
-              <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary);">
-                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
-                  Ratio actuel
-                </div>
-                <div class="text-base font-extrabold" style="color: #4ade80;">
-                  {tr.latest?.infinite ? '∞' : (tr.latest?.ratio?.toFixed(2) ?? '—')}
-                </div>
-                {#if tr.latest?.deltaRatio}
-                  <div
-                    class="text-[11px] font-semibold"
-                    style="color: {tr.latest.deltaRatio >= 0 ? '#4ade80' : '#f87171'};"
-                  >
-                    {fmtDeltaRatio(tr.latest.deltaRatio)} auj.
+              <div class="px-3 py-1.5 rounded-lg flex flex-col justify-between" style="background: var(--bg-secondary);">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
+                    Ratio actuel
                   </div>
-                {/if}
-              </div>
-
-              <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary);">
-                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
-                  Upload
-                </div>
-                <div class="text-sm font-bold" style="color: #4ade80;">
-                  {fmtBytes(tr.latest?.uploaded)}
-                </div>
-                <div
-                  class="text-[11px]"
-                  style="color: {(tr.latest?.deltaUploaded ?? 0) >= 0 ? '#86efac' : '#f87171'};"
-                >
-                  {fmtDeltaBytes(tr.latest?.deltaUploaded)} auj.
-                </div>
-              </div>
-
-              <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary);">
-                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
-                  Download
-                </div>
-                <div class="text-sm font-bold" style="color: #cbd5e1;">
-                  {fmtBytes(tr.latest?.downloaded)}
-                </div>
-                <div class="text-[11px]" style="color: #94a3b8;">
-                  {fmtDeltaBytes(tr.latest?.deltaDownloaded)} auj.
-                </div>
-              </div>
-
-              <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary);">
-                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
-                  Buffer
-                </div>
-                <div
-                  class="text-sm font-bold"
-                  style="color: {(tr.latest?.buffer ?? 0) < 0 ? '#f87171' : '#4ade80'};"
-                >
-                  {tr.latest?.infinite && tr.latest?.buffer === null ? '∞' : fmtBytes(tr.latest?.buffer)}
-                </div>
-                <div
-                  class="text-[11px]"
-                  style="color: {(tr.latest?.deltaBuffer ?? 0) >= 0 ? '#86efac' : '#f87171'};"
-                >
-                  {fmtDeltaBytes(tr.latest?.deltaBuffer)} auj.
-                </div>
-              </div>
-
-              <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary); border: 1px solid #42200688;">
-                <div class="text-[10px] uppercase tracking-wider font-bold" style="color: #facc15;">
-                  {isAstra ? '✨ Karma' : `🪙 ${ptsLabel}`}
-                </div>
-                <div class="text-sm font-extrabold font-mono" style="color: #fef08a;">
-                  {currentPts !== null && currentPts !== undefined ? fmtPoints(currentPts) : '—'}
-                </div>
-                <div class="text-[11px] font-mono">
-                  {#if tr.latest?.deltaSeedbonus !== null && tr.latest?.deltaSeedbonus !== undefined && tr.latest?.deltaSeedbonus !== 0}
-                    <span style="color: {tr.latest.deltaSeedbonus > 0 ? '#4ade80' : '#f87171'};">
-                      {fmtDeltaPoints(tr.latest.deltaSeedbonus)} auj.
-                    </span>
-                  {:else if currentPph !== null && currentPph !== undefined}
-                    <span style="color: #c4b5fd;">+{Number(currentPph).toFixed(1)}/h</span>
-                  {:else}
-                    <span style="color: var(--text-muted);">—</span>
+                  <div class="text-base font-extrabold" style="color: #4ade80;">
+                    {tr.latest?.infinite ? '∞' : (tr.latest?.ratio?.toFixed(2) ?? '—')}
+                  </div>
+                  {#if tr.latest?.deltaRatio}
+                    <div
+                      class="text-[11px] font-semibold"
+                      style="color: {tr.latest.deltaRatio >= 0 ? '#4ade80' : '#f87171'};"
+                    >
+                      {fmtDeltaRatio(tr.latest.deltaRatio)} auj.
+                    </div>
                   {/if}
+                </div>
+                <div class="h-1 w-full rounded-full overflow-hidden mt-1.5" style="background: #1e293b;">
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {tr.latest?.infinite ? 100 : Math.min(100, Math.max(12, ((tr.latest?.ratio ?? 0) / 4) * 100))}%; background: #4ade80;"></div>
+                </div>
+              </div>
+
+              <div class="px-3 py-1.5 rounded-lg flex flex-col justify-between" style="background: var(--bg-secondary);">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
+                    Upload
+                  </div>
+                  <div class="text-sm font-bold" style="color: #4ade80;">
+                    {fmtBytes(tr.latest?.uploaded)}
+                  </div>
+                  <div
+                    class="text-[11px]"
+                    style="color: {(tr.latest?.deltaUploaded ?? 0) >= 0 ? '#86efac' : '#f87171'};"
+                  >
+                    {fmtDeltaBytes(tr.latest?.deltaUploaded)} auj.
+                  </div>
+                </div>
+                <div class="h-1 w-full rounded-full overflow-hidden mt-1.5" style="background: #1e293b;">
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((tr.latest?.uploaded ?? 0) / (2 * 1024 ** 4)) * 100))}%; background: #4ade80;"></div>
+                </div>
+              </div>
+
+              <div class="px-3 py-1.5 rounded-lg flex flex-col justify-between" style="background: var(--bg-secondary);">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
+                    Download
+                  </div>
+                  <div class="text-sm font-bold" style="color: #cbd5e1;">
+                    {fmtBytes(tr.latest?.downloaded)}
+                  </div>
+                  <div class="text-[11px]" style="color: #94a3b8;">
+                    {fmtDeltaBytes(tr.latest?.deltaDownloaded)} auj.
+                  </div>
+                </div>
+                <div class="h-1 w-full rounded-full overflow-hidden mt-1.5" style="background: #1e293b;">
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((tr.latest?.downloaded ?? 0) / (2 * 1024 ** 4)) * 100))}%; background: #94a3b8;"></div>
+                </div>
+              </div>
+
+              <div class="px-3 py-1.5 rounded-lg flex flex-col justify-between" style="background: var(--bg-secondary);">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
+                    Buffer
+                  </div>
+                  <div
+                    class="text-sm font-bold"
+                    style="color: {(tr.latest?.buffer ?? 0) < 0 ? '#f87171' : '#4ade80'};"
+                  >
+                    {tr.latest?.infinite && tr.latest?.buffer === null ? '∞' : fmtBytes(tr.latest?.buffer)}
+                  </div>
+                  <div
+                    class="text-[11px]"
+                    style="color: {(tr.latest?.deltaBuffer ?? 0) >= 0 ? '#86efac' : '#f87171'};"
+                  >
+                    {fmtDeltaBytes(tr.latest?.deltaBuffer)} auj.
+                  </div>
+                </div>
+                <div class="h-1 w-full rounded-full overflow-hidden mt-1.5" style="background: #1e293b;">
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {tr.latest?.infinite ? 100 : Math.min(100, Math.max(12, (Math.abs(tr.latest?.buffer ?? 0) / (1024 ** 4)) * 100))}%; background: {(tr.latest?.buffer ?? 0) < 0 ? '#f87171' : '#4ade80'};"></div>
+                </div>
+              </div>
+
+              <div class="px-3 py-1.5 rounded-lg flex flex-col justify-between" style="background: var(--bg-secondary); border: 1px solid #42200688;">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider font-bold" style="color: #facc15;">
+                    {isAstra ? '✨ Karma' : `🪙 ${ptsLabel}`}
+                  </div>
+                  <div class="text-sm font-extrabold font-mono" style="color: #fef08a;">
+                    {currentPts !== null && currentPts !== undefined ? fmtPoints(currentPts) : '—'}
+                  </div>
+                  <div class="text-[11px] font-mono">
+                    {#if tr.latest?.deltaSeedbonus !== null && tr.latest?.deltaSeedbonus !== undefined && tr.latest?.deltaSeedbonus !== 0}
+                      <span style="color: {tr.latest.deltaSeedbonus > 0 ? '#4ade80' : '#f87171'};">
+                        {fmtDeltaPoints(tr.latest.deltaSeedbonus)} auj.
+                      </span>
+                    {:else if currentPph !== null && currentPph !== undefined}
+                      <span style="color: #c4b5fd;">+{Number(currentPph).toFixed(1)}/h</span>
+                    {:else}
+                      <span style="color: var(--text-muted);">—</span>
+                    {/if}
+                  </div>
+                </div>
+                <div class="h-1 w-full rounded-full overflow-hidden mt-1.5" style="background: #42200644;">
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((currentPts ?? 0) / 25000) * 100))}%; background: #facc15;"></div>
                 </div>
               </div>
 
               {#if isAstra}
-                <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary); border: 1px solid #581c8766;">
-                  <div class="text-[10px] uppercase tracking-wider font-bold" style="color: #c084fc;">
-                    🪙 Astra
+                <div class="px-3 py-1.5 rounded-lg flex flex-col justify-between" style="background: var(--bg-secondary); border: 1px solid #581c8766;">
+                  <div>
+                    <div class="text-[10px] uppercase tracking-wider font-bold" style="color: #c084fc;">
+                      🪙 Astra
+                    </div>
+                    <div class="text-sm font-extrabold font-mono" style="color: #e9d5ff;">
+                      {currentAstra !== null && currentAstra !== undefined ? fmtPoints(currentAstra) : '—'}
+                    </div>
+                    <div class="text-[11px] font-mono">
+                      {#if tr.latest?.deltaAstra !== null && tr.latest?.deltaAstra !== undefined && tr.latest?.deltaAstra !== 0}
+                        <span style="color: {tr.latest.deltaAstra > 0 ? '#4ade80' : '#f87171'};">
+                          {fmtDeltaPoints(tr.latest.deltaAstra)} auj.
+                        </span>
+                      {:else}
+                        <span style="color: var(--text-muted);">monnaie site</span>
+                      {/if}
+                    </div>
                   </div>
-                  <div class="text-sm font-extrabold font-mono" style="color: #e9d5ff;">
-                    {currentAstra !== null && currentAstra !== undefined ? fmtPoints(currentAstra) : '—'}
-                  </div>
-                  <div class="text-[11px] font-mono">
-                    {#if tr.latest?.deltaAstra !== null && tr.latest?.deltaAstra !== undefined && tr.latest?.deltaAstra !== 0}
-                      <span style="color: {tr.latest.deltaAstra > 0 ? '#4ade80' : '#f87171'};">
-                        {fmtDeltaPoints(tr.latest.deltaAstra)} auj.
-                      </span>
-                    {:else}
-                      <span style="color: var(--text-muted);">monnaie site</span>
-                    {/if}
+                  <div class="h-1 w-full rounded-full overflow-hidden mt-1.5" style="background: #581c8744;">
+                    <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((currentAstra ?? 0) / 1000) * 100))}%; background: #c084fc;"></div>
                   </div>
                 </div>
               {/if}
 
-              <div class="px-3 py-1.5 rounded-lg" style="background: var(--bg-secondary);">
-                <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
-                  🌱 Seeds
+              <div class="px-3 py-1.5 rounded-lg flex flex-col justify-between" style="background: var(--bg-secondary);">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">
+                    🌱 Seeds
+                  </div>
+                  <div class="text-sm font-bold font-mono" style="color: #4ade80;">
+                    {currentSeeds !== null && currentSeeds !== undefined ? Number(currentSeeds).toLocaleString('fr-FR') : '—'}
+                  </div>
+                  <div class="text-[11px]" style="color: var(--text-muted);">
+                    {#if currentPph !== null && currentPph !== undefined}
+                      +{Number(currentPph).toFixed(1)} pts/h
+                    {:else}
+                      actifs
+                    {/if}
+                  </div>
                 </div>
-                <div class="text-sm font-bold font-mono" style="color: #4ade80;">
-                  {currentSeeds !== null && currentSeeds !== undefined ? Number(currentSeeds).toLocaleString('fr-FR') : '—'}
-                </div>
-                <div class="text-[11px]" style="color: var(--text-muted);">
-                  {#if currentPph !== null && currentPph !== undefined}
-                    +{Number(currentPph).toFixed(1)} pts/h
-                  {:else}
-                    actifs
-                  {/if}
+                <div class="h-1 w-full rounded-full overflow-hidden mt-1.5" style="background: #1e293b;">
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((currentSeeds ?? 0) / 150) * 100))}%; background: #4ade80;"></div>
                 </div>
               </div>
             </div>
@@ -744,11 +787,34 @@
                     <stop offset="100%" stop-color={activeMetric === 'astra' ? '#a855f7' : chart.isPoints ? '#eab308' : '#8b5cf6'} stop-opacity="0.0" />
                   </linearGradient>
                 </defs>
+
+                <!-- Barres verticales de statistiques animées sous chaque point -->
+                {#each chart.points as pt, idx}
+                  {@const barW = Math.max(3, Math.min(8, Math.floor(400 / chart.points.length)))}
+                  {@const barH = Math.max(3, 94 - pt.y)}
+                  <rect
+                    class="stat-bar-animated"
+                    x={pt.x - barW / 2}
+                    y={pt.y}
+                    width={barW}
+                    height={barH}
+                    rx="2"
+                    fill="url(#grad-{tr.id})"
+                    stroke={activeMetric === 'astra' ? '#c084fc' : chart.isPoints ? '#facc15' : '#8b5cf6'}
+                    stroke-opacity="0.35"
+                    stroke-width="1"
+                    style="animation-delay: {idx * 25}ms;"
+                  >
+                    <title>{pt.date} : {chart.isPoints ? fmtPoints(pt.val) : pt.val}</title>
+                  </rect>
+                {/each}
+
                 {#if chart.area}
-                  <polygon points={chart.area} fill="url(#grad-{tr.id})" />
+                  <polygon points={chart.area} fill="url(#grad-{tr.id})" class="stat-area-animated" />
                 {/if}
                 {#if chart.points.length > 1}
                   <polyline
+                    class="stat-line-animated"
                     fill="none"
                     stroke={activeMetric === 'astra' ? '#c084fc' : chart.isPoints ? '#facc15' : '#a78bfa'}
                     stroke-width="2.5"
@@ -757,8 +823,8 @@
                     points={chart.polyline}
                   />
                 {/if}
-                {#each chart.points as pt}
-                  <g>
+                {#each chart.points as pt, idx}
+                  <g class="stat-point-animated" style="animation-delay: {idx * 25 + 150}ms;">
                     <circle
                       cx={pt.x}
                       cy={pt.y}

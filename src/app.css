@@ -31,3 +31,107 @@ body {
 .drag-handle:active {
   cursor: grabbing;
 }
+
+/* ==========================================================================
+   Animations des barres et graphiques de statistiques
+   ========================================================================== */
+
+@keyframes statBarRise {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes statLineDraw {
+  from {
+    stroke-dashoffset: 1400;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes statAreaFade {
+  from {
+    opacity: 0;
+    transform: scaleY(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes statPointPop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(1.35);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes statBarGrowX {
+  from {
+    transform: scaleX(0);
+    opacity: 0.2;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes statFadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stat-bar-animated {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: statBarRise 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stat-area-animated {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: statAreaFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stat-line-animated {
+  stroke-dasharray: 1400;
+  animation: statLineDraw 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.stat-point-animated {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: statPointPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.stat-bar-grow-x {
+  transform-origin: left;
+  animation: statBarGrowX 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stat-card-enter {
+  animation: statFadeSlideIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
