@@ -371,3 +371,64 @@ export async function performUpdate() {
     status: updatedStatus
   };
 }
+
+let contributorsCache = {
+  checkedAt: 0,
+  data: null
+};
+
+/**
+ * Récupère la liste des contributeurs du dépôt GitHub
+ */
+export async function getContributors({ force = false } = {}) {
+  const now = Date.now();
+  if (!force && contributorsCache.data && now - contributorsCache.checkedAt < CACHE_TTL_MS) {
+    return contributorsCache.data;
+  }
+
+  try {
+    const res = await fetchGithubJson(
+      `https://api.github.com/repos/${GITHUB_REPO}/contributors?per_page=100`
+    );
+    if (res.ok && Array.isArray(res.data)) {
+      const contributors = res.data.map((c) => ({
+        login: c.login,
+        avatarUrl: c.avatar_url,
+        htmlUrl: c.html_url,
+        contributions: c.contributions || 0,
+        type: c.type || 'User'
+      }));
+      contributorsCache = {
+        checkedAt: now,
+        data: {
+          ok: true,
+          repo: GITHUB_REPO,
+          repoUrl: GITHUB_REPO_URL,
+          contributors
+        }
+      };
+      return contributorsCache.data;
+    }
+  } catch (e) {
+    if (contributorsCache.data) return contributorsCache.data;
+  }
+
+  // Fallback si l'API GitHub est injoignable ou limite atteinte
+  const fallback = [
+    {
+      login: 'LRoffic',
+      avatarUrl: 'https://avatars.githubusercontent.com/u/4381940?v=4',
+      htmlUrl: 'https://github.com/LRoffic',
+      contributions: 30,
+      type: 'User'
+    }
+  ];
+
+  return {
+    ok: true,
+    repo: GITHUB_REPO,
+    repoUrl: GITHUB_REPO_URL,
+    contributors: fallback,
+    fromFallback: true
+  };
+}

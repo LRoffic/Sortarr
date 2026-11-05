@@ -1,6 +1,7 @@
 import { getConfig } from '$lib/config.server.js';
 import { fetchIndexers } from '$lib/prowlarr.server.js';
 import { getSecuritySettings } from '$lib/auth.server.js';
+import { getContributors } from '$lib/updater.server.js';
 
 export const load = async ({ locals }) => {
   const config = getConfig();
@@ -17,5 +18,9 @@ export const load = async ({ locals }) => {
     }
   }
   const security = getSecuritySettings(locals.user?.username);
-  return { config, indexers, indexersError, security };
+  let contributors = null;
+  try {
+    contributors = await getContributors();
+  } catch {}
+  return { config, indexers, indexersError, security, contributors };
 };

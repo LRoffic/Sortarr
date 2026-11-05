@@ -63,6 +63,33 @@
     }
   }
 
+  // Contributeurs GitHub (https://github.com/LRoffic/Sortarr)
+  let contributorsData = $state(untrack(() => data.contributors || null));
+  let isLoadingContributors = $state(false);
+
+  async function loadContributors(force = false) {
+    isLoadingContributors = true;
+    try {
+      const res = await fetch(`/api/contributors${force ? '?force=1' : ''}`);
+      contributorsData = await res.json();
+    } catch {
+      contributorsData = {
+        ok: true,
+        contributors: [
+          {
+            login: 'LRoffic',
+            avatarUrl: 'https://avatars.githubusercontent.com/u/4381940?v=4',
+            htmlUrl: 'https://github.com/LRoffic',
+            contributions: 30,
+            type: 'User'
+          }
+        ]
+      };
+    } finally {
+      isLoadingContributors = false;
+    }
+  }
+
   let autoSaveStatus = $state('idle'); // 'idle' | 'saving' | 'saved' | 'error'
   let autoSaveError = $state('');
   let hasMounted = false;
@@ -70,6 +97,7 @@
 
   onMount(() => {
     checkUpdates(false);
+    loadContributors(false);
     setTimeout(() => {
       hasMounted = true;
     }, 400);
@@ -2026,6 +2054,121 @@
     {/if}
   </div>
 
+  <!-- Carte des contributeurs GitHub -->
+  <div id="contributors" class="mt-8 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+    <div class="flex items-start justify-between gap-3 flex-wrap">
+      <div>
+        <div class="flex items-center gap-2">
+          <h3 class="text-sm font-semibold flex items-center gap-2">
+            <span>👥</span>
+            <span>Contributeurs GitHub</span>
+          </h3>
+          {#if contributorsData?.contributors?.length}
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold"
+                  style="background: #7c3aed22; color: #a78bfa; border: 1px solid #7c3aed44;">
+              {contributorsData.contributors.length}
+            </span>
+          {/if}
+        </div>
+        <p class="text-xs mt-0.5" style="color: var(--text-muted);">
+          Merci à tous les développeurs et contributeurs qui soutiennent et font évoluer Sortarr sur
+          <a href="https://github.com/LRoffic/Sortarr" target="_blank" rel="noreferrer" class="underline hover:text-purple-300" style="color: #a78bfa;">
+            github.com/LRoffic/Sortarr
+          </a>
+        </p>
+      </div>
+      <button
+        type="button"
+        onclick={() => loadContributors(true)}
+        disabled={isLoadingContributors}
+        class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shrink-0 transition-colors hover:bg-slate-800"
+        style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+      >
+        {isLoadingContributors ? '⏳ Chargement...' : '🔄 Actualiser'}
+      </button>
+    </div>
+
+    <!-- Contenu des contributeurs -->
+    {#if isLoadingContributors && !contributorsData}
+      <div class="p-6 rounded-lg text-center text-xs" style="background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);">
+        <span class="inline-block animate-spin mr-2">⏳</span> Chargement des contributeurs GitHub...
+      </div>
+    {:else if contributorsData?.contributors?.length}
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+        {#each contributorsData.contributors as contributor}
+          <a
+            href={contributor.htmlUrl}
+            target="_blank"
+            rel="noreferrer"
+            class="flex items-center gap-3 p-3 rounded-xl transition-all duration-200 hover:scale-[1.01] hover:border-purple-500/50 group"
+            style="background: var(--bg-card); border: 1px solid var(--border);"
+          >
+            <img
+              src={contributor.avatarUrl}
+              alt={contributor.login}
+              class="w-11 h-11 rounded-full object-cover shrink-0 ring-2 ring-purple-500/20 group-hover:ring-purple-500/60 transition-all"
+              loading="lazy"
+            />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold text-sm text-white group-hover:text-purple-300 transition-colors truncate">
+                  {contributor.login}
+                </span>
+                {#if contributor.login === 'LRoffic'}
+                  <span class="px-1.5 py-0.2 rounded text-[9px] font-semibold uppercase tracking-wider"
+                        style="background: #eab30822; color: #facc15; border: 1px solid #eab30844;"
+                        title="Créateur du projet">
+                    Owner
+                  </span>
+                {/if}
+              </div>
+              <div class="flex items-center gap-2 mt-1 text-[11px]" style="color: var(--text-muted);">
+                <span class="flex items-center gap-1">
+                  <span style="color: #4ade80;">●</span>
+                  <span>{contributor.contributions} contribution{contributor.contributions > 1 ? 's' : ''}</span>
+                </span>
+                <span>•</span>
+                <span class="group-hover:underline text-purple-400">Profil ↗</span>
+              </div>
+            </div>
+          </a>
+        {/each}
+      </div>
+
+      <!-- Footer CTA de la carte -->
+      <div class="p-3 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2 text-xs"
+           style="background: var(--bg-card); border: 1px solid var(--border);">
+        <div class="flex items-center gap-2 text-[11px]" style="color: var(--text-muted);">
+          <span>💡</span>
+          <span>Vous souhaitez participer au projet, signaler un bug ou proposer une fonctionnalité ?</span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a
+            href="https://github.com/LRoffic/Sortarr/graphs/contributors"
+            target="_blank"
+            rel="noreferrer"
+            class="px-2.5 py-1 rounded text-[11px] font-medium transition-colors hover:bg-slate-800"
+            style="border: 1px solid var(--border); color: #cbd5e1;"
+          >
+            📊 Graphique des commits ↗
+          </a>
+          <a
+            href="https://github.com/LRoffic/Sortarr/pulls"
+            target="_blank"
+            rel="noreferrer"
+            class="px-2.5 py-1 rounded text-[11px] font-medium transition-colors hover:bg-purple-900/50"
+            style="background: #7c3aed22; border: 1px solid #7c3aed55; color: #a78bfa;"
+          >
+            Contribuer sur GitHub ↗
+          </a>
+        </div>
+      </div>
+    {:else}
+      <div class="p-4 rounded-lg text-center text-xs" style="background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);">
+        Aucun contributeur disponible pour le moment.
+      </div>
+    {/if}
+  </div>
 
 </div>
 
