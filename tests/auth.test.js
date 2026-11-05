@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { describe, it, expect } from 'vitest';
 import {
   generateTotpSecret,
@@ -105,6 +106,16 @@ describe('auth & security', () => {
       const newSessionToken = createSessionToken(testUser);
       expect(verifySessionToken(newSessionToken)).not.toBeNull();
       expect(verifySessionToken(newSessionToken).username).toBe(testUser);
+
+      // Clean up test user so data/users.json is never polluted
+      try {
+        const p = './data/users.json';
+        if (fs.existsSync(p)) {
+          const d = JSON.parse(fs.readFileSync(p, 'utf-8'));
+          d.users = d.users.filter((u) => u.username !== testUser);
+          fs.writeFileSync(p, JSON.stringify(d, null, 2));
+        }
+      } catch {}
     });
   });
 

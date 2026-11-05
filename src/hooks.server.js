@@ -37,8 +37,12 @@ export async function handle({ event, resolve }) {
   event.locals.user = user;
   event.locals.hasUsers = registered;
 
-  // Autoriser uniquement les routes d'API d'authentification publiques sans session
-  if (PUBLIC_AUTH_ROUTES.has(pathname)) {
+  // Autoriser uniquement les routes publiques (auth + endpoints de consultation publique en GET comme /api/update et /api/contributors)
+  const isPublicRoute =
+    PUBLIC_AUTH_ROUTES.has(pathname) ||
+    ((pathname === '/api/update' || pathname === '/api/contributors') && event.request.method === 'GET');
+
+  if (isPublicRoute) {
     const response = await resolve(event);
     return applySecurityHeaders(response);
   }

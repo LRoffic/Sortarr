@@ -25,11 +25,12 @@
 
   // Release sélectionnée pour affichage des notes (par défaut la dernière)
   let activeRelease = $derived.by(() => {
-    if (!updateStatus) return null;
+    if (!updateStatus || !updateStatus.ok) return null;
     if (selectedReleaseTag && Array.isArray(updateStatus.releases)) {
       const found = updateStatus.releases.find((r) => r.tagName === selectedReleaseTag);
       if (found) return found;
     }
+    if (!updateStatus.tagName && !updateStatus.latestVersion) return null;
     return {
       tagName: updateStatus.tagName,
       name: updateStatus.releaseName || updateStatus.tagName,
@@ -44,9 +45,14 @@
     isCheckingUpdate = true;
     try {
       const res = await fetch(`/api/update${force ? '?force=1' : ''}`);
-      updateStatus = await res.json();
+      const json = await res.json();
+      if (!res.ok && !json.error) {
+        updateStatus = { ok: false, error: `Erreur HTTP ${res.status}`, currentVersion: data.currentVersion || '1.0.6' };
+      } else {
+        updateStatus = { ...json, currentVersion: json.currentVersion || data.currentVersion || '1.0.6' };
+      }
     } catch (e) {
-      updateStatus = { ok: false, error: e.message };
+      updateStatus = { ok: false, error: e.message, currentVersion: data.currentVersion || '1.0.6' };
     } finally {
       isCheckingUpdate = false;
     }
@@ -2020,9 +2026,9 @@
               <span
                 class="font-mono font-bold ml-1 px-2 py-0.5 rounded cursor-help"
                 style="background: #7c3aed22; color: #a78bfa;"
-                data-tooltip={updateStatus.lastUpdatedAt ? `Dernière mise à jour : ${formatDateTime(updateStatus.lastUpdatedAt)}` : `Version installée : v${updateStatus.currentVersion}`}
+                data-tooltip={updateStatus.lastUpdatedAt ? `Dernière mise à jour : ${formatDateTime(updateStatus.lastUpdatedAt)}` : `Version installée : v${updateStatus.currentVersion || data.currentVersion || '1.0.6'}`}
               >
-                v{updateStatus.currentVersion || '1.0.0'}
+                v{updateStatus.currentVersion || data.currentVersion || '1.0.6'}
               </span>
             </div>
             <div>
@@ -2031,13 +2037,17 @@
                 <span class="font-mono ml-1 px-2 py-0.5 rounded" style="background: #1e293b; color: #94a3b8;">
                   Aucune release publiée
                 </span>
-              {:else}
+              {:else if updateStatus.tagName || updateStatus.latestVersion}
                 <span
                   class="font-mono font-bold ml-1 px-2 py-0.5 rounded cursor-help"
                   style="background: {updateStatus.updateAvailable ? '#22c55e22' : '#1e293b'}; color: {updateStatus.updateAvailable ? '#4ade80' : '#cbd5e1'};"
                   data-tooltip={updateStatus.publishedAt ? `Publiée le ${formatDateTime(updateStatus.publishedAt)}` : ''}
                 >
                   {updateStatus.tagName || `v${updateStatus.latestVersion}`}
+                </span>
+              {:else}
+                <span class="font-mono ml-1 px-2 py-0.5 rounded" style="background: #1e293b; color: #94a3b8;">
+                  {updateStatus.error ? 'Indisponible' : '—'}
                 </span>
               {/if}
             </div>
