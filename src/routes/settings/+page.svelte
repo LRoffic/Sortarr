@@ -2026,17 +2026,7 @@
     {/if}
   </div>
 
-  <!-- Info box -->
-  <div class="mt-8 rounded-xl p-4" style="background: var(--bg-card); border: 1px solid var(--border);">
-    <h3 class="font-semibold mb-3 text-sm">ℹ️ Comment ça marche</h3>
-    <ul class="space-y-2 text-sm" style="color: var(--text-muted);">
-      <li>• <strong style="color: #e2e8f0;">Glissez-déposez</strong> les indexeurs pour réordonner les priorités</li>
-      <li>• <strong style="color: #e2e8f0;">Auto-trier</strong> place les indexeurs freeleech en premier, puis trie par ratio décroissant</li>
-      <li>• <strong style="color: #e2e8f0;">Appliquer</strong> envoie les nouvelles priorités à Prowlarr via l'API</li>
-      <li>• Le <strong style="color: #22c55e;">badge FL</strong> indique un indexeur avec freeleech actif</li>
-      <li>• <strong style="color: #a78bfa;">Auto-tri en arrière-plan</strong> s'exécute automatiquement côté serveur selon l'intervalle configuré</li>
-    </ul>
-  </div>
+
 </div>
 
 <!-- Notification toast en bas à gauche lors de la sauvegarde -->

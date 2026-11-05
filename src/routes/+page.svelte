@@ -15,6 +15,7 @@
   let lastRefresh = $state(new Date());
   let schedulerStatus = $state(null);
   let schedulerPollTimer = null;
+  let showHelpModal = $state(false);
 
   // Enrich indexers with stats
   function enrichIndexers(rawIndexers) {
@@ -249,6 +250,14 @@
               class="px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors"
               style="background: var(--accent); color: white; opacity: {isSaving ? 0.6 : 1};">
         {isSaving ? '⏳ Application...' : '💾 Appliquer les priorités'}
+      </button>
+      <button onclick={() => { showHelpModal = true; }}
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 cursor-pointer hover:bg-slate-800"
+              style="background: var(--bg-card); border: 1px solid var(--border); color: #cbd5e1;"
+              title="Comment ça marche ?">
+        <span>💡</span>
+        <span>Aide ?</span>
       </button>
     </div>
   </div>
@@ -535,4 +544,142 @@
       <p>Aucun indexeur trouvé sur Prowlarr.</p>
     </div>
   {/if}
+{/if}
+
+<!-- Modal d'Aide : Comment ça marche ? -->
+{#if showHelpModal}
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    style="background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(6px);"
+    onclick={(e) => { if (e.target === e.currentTarget) showHelpModal = false; }}
+    onkeydown={(e) => { if (e.key === 'Escape') showHelpModal = false; }}
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1"
+  >
+    <div
+      class="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+      style="background: #13141f; border: 1px solid var(--border); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);"
+    >
+      <!-- Header de la modal -->
+      <div class="px-5 py-4 flex items-center justify-between border-b" style="border-color: var(--border); background: #1a1a24;">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-lg flex items-center justify-center text-base" style="background: #7c3aed22; color: #a78bfa; border: 1px solid #7c3aed55;">
+            💡
+          </span>
+          <div>
+            <h2 class="text-base font-bold text-white">Comment ça marche ?</h2>
+            <p class="text-xs" style="color: var(--text-muted);">Guide d'utilisation et fonctionnement de Sortarr</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onclick={() => (showHelpModal = false)}
+          class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors cursor-pointer hover:bg-slate-800"
+          style="color: var(--text-muted);"
+          aria-label="Fermer la modal"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- Corps de la modal -->
+      <div class="p-5 overflow-y-auto space-y-4 text-xs leading-relaxed" style="color: #cbd5e1;">
+        <!-- Section 1 : Priorités & Auto-tri -->
+        <div class="p-3.5 rounded-xl space-y-2" style="background: #1a1a24; border: 1px solid var(--border);">
+          <div class="font-bold text-sm flex items-center gap-2" style="color: #a78bfa;">
+            <span>🎯</span>
+            <span>Gestion des priorités Prowlarr</span>
+          </div>
+          <ul class="space-y-1.5 pl-1">
+            <li>
+              • <strong class="text-white">Glisser-déposer :</strong> Utilisez la poignée à 6 points <span class="font-mono text-[10px] px-1 py-0.5 rounded bg-slate-800">⠿</span> à gauche de chaque indexeur pour réordonner manuellement selon vos préférences.
+            </li>
+            <li>
+              • <strong class="text-white">✨ Auto-trier (local) :</strong> Réorganise instantanément les indexeurs selon l'algorithme intelligent :
+              <ol class="list-decimal pl-6 mt-1 space-y-0.5" style="color: #94a3b8;">
+                <li>Trackers sans ratio (publics) ou à ratio infini (<span class="font-bold text-emerald-400">∞</span>) en tête.</li>
+                <li>Trackers avec <span class="font-semibold text-emerald-400">Freeleech actif (FL)</span> classés du plus haut ratio au plus bas.</li>
+                <li>Autres trackers privés triés du plus haut ratio au plus bas (départage par buffer net en cas d'égalité).</li>
+              </ol>
+            </li>
+            <li>
+              • <strong class="text-white">💾 Appliquer les priorités :</strong> Envoie l'ordre calculé (<code class="text-purple-300">1 à N</code>) directement à votre instance Prowlarr via l'API pour que Sonarr et Radarr interrogent vos trackers dans cet ordre.
+            </li>
+          </ul>
+        </div>
+
+        <!-- Section 2 : Protection du ratio no-arr -->
+        <div class="p-3.5 rounded-xl space-y-2" style="background: #1a1a24; border: 1px solid var(--border);">
+          <div class="font-bold text-sm flex items-center gap-2" style="color: #f87171;">
+            <span>🏷️</span>
+            <span>Protection du ratio par Tag (no-arr)</span>
+          </div>
+          <p>
+            Si un tracker privé passe sous votre seuil de ratio minimum (ex: <code class="text-purple-300">1.0</code>), Sortarr lui attribue automatiquement le tag d'exclusion <code class="text-red-400">no-arr</code> dans Prowlarr, Radarr et Sonarr.
+          </p>
+          <ul class="space-y-1.5 pl-1">
+            <li>
+              • <strong class="text-white">Radarr &amp; Sonarr :</strong> Vos indexeurs sous le seuil ne recevront plus de téléchargements automatiques, évitant ainsi de ruiner votre ratio.
+            </li>
+            <li>
+              • <strong class="text-white">Cross-seed :</strong> Le tracker reste opérationnel dans Prowlarr pour compléter vos torrents en seed.
+            </li>
+            <li>
+              • <strong class="text-white">Rétablissement automatique :</strong> Dès que votre ratio remonte au-dessus du seuil, le tag est automatiquement retiré.
+            </li>
+          </ul>
+        </div>
+
+        <!-- Section 3 : Badges & Indicateurs -->
+        <div class="p-3.5 rounded-xl space-y-2" style="background: #1a1a24; border: 1px solid var(--border);">
+          <div class="font-bold text-sm flex items-center gap-2" style="color: #facc15;">
+            <span>⚡</span>
+            <span>Badges et symboles</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            <div class="flex items-center gap-2">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" style="background: #22c55e22; color: #4ade80; border: 1px solid #22c55e44;">FL</span>
+              <span>Tracker en Freeleech (aucun download décompté).</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" style="background: #ef444422; color: #f87171; border: 1px solid #ef444455;">🏷️ no-arr</span>
+              <span>Indexeur exclu des grabs auto par protection de ratio.</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold" style="background: #f9731622; color: #fb923c; border: 1px solid #f9731644;">PAUSE</span>
+              <span>Indexeur en pause partielle ou totale dans Prowlarr.</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="px-1.5 py-0.5 rounded text-[10px]" style="background: #7c3aed22; color: #a78bfa; border: 1px solid #7c3aed44;">Privé</span>
+              <span>Type de tracker (Privé, Semi-privé ou Public).</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4 : Planificateur automatique -->
+        <div class="p-3.5 rounded-xl space-y-1.5" style="background: #1a1a24; border: 1px solid var(--border);">
+          <div class="font-bold text-sm flex items-center gap-2" style="color: #4ade80;">
+            <span>⏱️</span>
+            <span>Auto-tri et actualisation en arrière-plan</span>
+          </div>
+          <p>
+            Le planificateur de Sortarr s'exécute côté serveur à l'intervalle configuré (ex: toutes les 20 min). Il récupère les statistiques réelles de vos trackers, réordonne les indexeurs Prowlarr et synchronise les tags même lorsque votre navigateur est fermé.
+          </p>
+        </div>
+      </div>
+
+      <!-- Footer de la modal -->
+      <div class="px-5 py-3.5 border-t flex items-center justify-end" style="border-color: var(--border); background: #1a1a24;">
+        <button
+          type="button"
+          onclick={() => (showHelpModal = false)}
+          class="px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+          style="background: var(--accent); color: white;"
+        >
+          Compris !
+        </button>
+      </div>
+    </div>
+  </div>
 {/if}
