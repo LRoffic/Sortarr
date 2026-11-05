@@ -6,7 +6,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node build/index.js"
+    "start": "node build/index.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "@sveltejs/adapter-node": "^6.0.1",
@@ -18,5 +19,8 @@
     "tailwindcss": "^4.3.4",
     "vite": "^8.3.5"
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "vitest": "^5.1.0"
+  }
 }

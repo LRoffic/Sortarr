@@ -191,9 +191,13 @@
     const vals = pts.map((p) => p.val);
     let min = Math.min(...vals);
     let max = Math.max(...vals);
-    if (min === max) {
+    const range = max - min;
+    if (range === 0) {
       min = Math.max(0, min - 0.5);
       max = max + 0.5;
+    } else if (range < 0.2) {
+      min = Math.max(0, min - (0.2 - range) / 2);
+      max = max + (0.2 - range) / 2;
     }
 
     const coords = pts.map((p, idx) => {

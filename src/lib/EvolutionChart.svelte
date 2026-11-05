@@ -156,21 +156,20 @@
     <!-- Barres verticales qui s'élèvent depuis 0.0 (baseline y=94) jusqu'à leur hauteur réelle -->
     {#each animatedPoints as pt}
       {@const barW = Math.max(3, Math.min(8, Math.floor(400 / animatedPoints.length)))}
-      {#if pt.barH > 0.5}
-        <rect
-          x={pt.x - barW / 2}
-          y={pt.curY}
-          width={barW}
-          height={pt.barH}
-          rx="2"
-          fill="url(#grad-{trackerId})"
-          stroke={activeMetric === 'astra' ? '#c084fc' : chart.isPoints ? '#facc15' : '#8b5cf6'}
-          stroke-opacity="0.35"
-          stroke-width="1"
-          class="cursor-pointer"
-          data-tooltip="{pt.date} : {chart.isPoints ? fmtPoints(pt.val) : pt.val}"
-        />
-      {/if}
+      {@const barH = Math.max(3, baselineY - pt.curY)}
+      <rect
+        x={pt.x - barW / 2}
+        y={pt.curY}
+        width={barW}
+        height={barH}
+        rx="2"
+        fill="url(#grad-{trackerId})"
+        stroke={activeMetric === 'astra' ? '#c084fc' : chart.isPoints ? '#facc15' : '#8b5cf6'}
+        stroke-opacity="0.35"
+        stroke-width="1"
+        class="cursor-pointer"
+        data-tooltip="{pt.date} : {chart.isPoints ? fmtPoints(pt.val) : pt.val}"
+      />
     {/each}
 
     <!-- Fond dégradé sous la courbe s'élevant depuis le bas -->
