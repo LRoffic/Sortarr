@@ -37,7 +37,7 @@ describe('telemetry service', () => {
     expect(payload).toBeDefined();
     expect(payload.instance_id).toBe(cfg.instanceId);
     expect(payload.instance_id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
-    expect(payload.version).toBe('1.0.6');
+    expect(payload.version).toBe('1.0.7');
     expect(typeof payload.os).toBe('string');
     expect(typeof payload.arch).toBe('string');
     expect(typeof payload.is_docker).toBe('boolean');

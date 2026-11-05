@@ -21,6 +21,13 @@ let updateCache = {
   data: null
 };
 
+export function clearUpdateCache() {
+  updateCache = { checkedAt: 0, data: null };
+  try {
+    contributorsCache = { checkedAt: 0, data: null };
+  } catch {}
+}
+
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 /** Lit la version actuelle depuis package.json */
@@ -399,22 +406,12 @@ export async function performUpdate() {
   });
   log('Build terminé avec succès', buildOut.trim().slice(-400));
 
-  // Signal de redémarrage pour Phusion Passenger / cPanel / Plesk (Node.js Selector)
-  try {
-    const tmpDir = path.join(rootDir, 'tmp');
-    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, 'restart.txt'), String(Date.now()));
-    log('Signal de redémarrage Phusion Passenger envoyé (tmp/restart.txt)');
-  } catch {}
-
-  // Si l'application est gérée par PM2 ou un gestionnaire de processus,
-  // programmer un redémarrage gracieux après la fin de la réponse HTTP
-  setTimeout(() => {
+  // Déclenche le redémarrage à chaud (tmp/restart.txt, signaux POSIX SIGHUP/SIGUSR2, PM2)
+  setTimeout(async () => {
     try {
-      if (typeof process.send === 'function') {
-        // Mode PM2 cluster
-        process.send('restart');
-      }
+      const { triggerHotRestart } = await import('./lifecycle.server.js');
+      triggerHotRestart();
+      log('Signal de redémarrage à chaud déclenché avec succès');
     } catch {}
   }, 1000);
 

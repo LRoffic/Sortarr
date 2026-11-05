@@ -5,9 +5,13 @@
 import { redirect, json } from '@sveltejs/kit';
 import { restartScheduler } from '$lib/scheduler.server.js';
 import { hasUsers, verifySessionToken, SESSION_COOKIE } from '$lib/auth.server.js';
+import { initServerLifecycle } from '$lib/lifecycle.server.js';
 
 // Permettre les connexions TLS aux instances locales et aux reverse proxies internes (certificats auto-signés)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+// Initialise la gestion du cycle de vie du serveur (SIGHUP, SIGUSR1, SIGUSR2, arrêt propre)
+initServerLifecycle();
 
 // Kick off the scheduler when the server boots
 restartScheduler();

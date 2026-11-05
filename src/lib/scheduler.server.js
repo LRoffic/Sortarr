@@ -100,6 +100,21 @@ export async function runAutoSort() {
 }
 
 /**
+ * Stop the background scheduler timers cleanly.
+ */
+export function stopScheduler() {
+  if (schedulerTimer) {
+    clearInterval(schedulerTimer);
+    schedulerTimer = null;
+  }
+  if (!statsSnapshotTimer) {
+    clearInterval(statsSnapshotTimer);
+    statsSnapshotTimer = null;
+  }
+  log('Scheduler arrêté proprement.');
+}
+
+/**
  * Start (or restart) the scheduler based on current config.
  */
 export function restartScheduler() {
