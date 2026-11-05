@@ -1,7 +1,7 @@
 import { getConfig } from './config.server.js';
 import { fetchIndexers, fetchTags } from './prowlarr.server.js';
 import { getTrackerStats } from './tracker.server.js';
-import { recordDailyStats } from './history.server.js';
+import { recordDailyStats, getLatestRecordedStats } from './history.server.js';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const cache = new Map(); // indexerId -> { at, key, stats }
@@ -54,7 +54,45 @@ export async function getEnrichedIndexers({ force = false } = {}) {
         return { ...baseItem, tracker: hit.stats };
       }
       const stats = await getTrackerStats(idx, cfg, { apiRatioUrl: config.apiRatioUrl });
-      if (!stats.error) cache.set(idx.id, { at: Date.now(), key, stats });
+      if (!stats.error) {
+        cache.set(idx.id, { at: Date.now(), key, stats });
+        return { ...baseItem, tracker: stats };
+      }
+
+      // Si la récupération directe échoue (session expirée, timeout, Cloudflare...),
+      // on bascule sur le cache mémoire ou l'historique enregistré pour conserver le ratio réel
+      // et éviter de désactiver la protection no-arr par inadvertance !
+      if (hit && hit.stats && !hit.stats.error) {
+        return {
+          ...baseItem,
+          tracker: {
+            ...hit.stats,
+            stale: true,
+            fetchError: stats.error
+          }
+        };
+      }
+
+      const latestHistory = getLatestRecordedStats(idx.id);
+      if (latestHistory && typeof latestHistory.ratio === 'number') {
+        return {
+          ...baseItem,
+          tracker: {
+            uploaded: latestHistory.uploaded,
+            downloaded: latestHistory.downloaded,
+            ratio: latestHistory.ratio,
+            buffer: latestHistory.buffer,
+            points: latestHistory.points,
+            pointsLabel: latestHistory.pointsLabel,
+            seeding: latestHistory.seeding,
+            leeching: latestHistory.leeching,
+            freeleech: latestHistory.freeleech,
+            stale: true,
+            fetchError: stats.error
+          }
+        };
+      }
+
       return { ...baseItem, tracker: stats };
     })
   );

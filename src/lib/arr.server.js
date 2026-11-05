@@ -4,11 +4,28 @@ import { getEnrichedIndexers } from './indexers.server.js';
 
 /**
  * Normalise une chaîne pour comparaison souple de noms d'indexeurs
+ * Supprime les mentions automatiques comme "(Prowlarr)" ajoutées par Prowlarr dans Radarr/Sonarr.
  */
 function normalizeName(str) {
   return String(str || '')
     .toLowerCase()
+    .replace(/\(prowlarr\)/gi, '')
+    .replace(/\bprowlarr\b/gi, '')
     .replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Tente d'extraire l'ID Prowlarr original depuis le champ baseUrl d'un indexeur Radarr/Sonarr.
+ * Ex: "http://localhost:9696/8/" -> 8
+ */
+function extractProwlarrIdFromArrIndexer(arrIndexer) {
+  if (!arrIndexer || !Array.isArray(arrIndexer.fields)) return null;
+  const baseUrlField = arrIndexer.fields.find(
+    (f) => f && f.name === 'baseUrl' && typeof f.value === 'string'
+  );
+  if (!baseUrlField) return null;
+  const m = baseUrlField.value.match(/\/(\d+)\/?$/);
+  return m ? parseInt(m[1], 10) : null;
 }
 
 /**
@@ -108,22 +125,24 @@ export async function ensureTag(baseUrl, apiKey, tagLabel, apiVersion = 'v3') {
 export function shouldTagIndexer(idx, config) {
   // 1. Tracker public -> jamais taggé
   if (idx.privacy === 'public' || idx.tracker?.public === true) {
-    return { shouldTag: false, reason: 'Tracker public (pas de ratio)' };
+    return { shouldTag: false, keepExisting: false, reason: 'Tracker public (pas de ratio)' };
   }
 
   // 2. Ratio infini -> jamais taggé
   if (idx.tracker?.infinite === true) {
-    return { shouldTag: false, reason: 'Ratio infini (aucun risque)' };
+    return { shouldTag: false, keepExisting: false, reason: 'Ratio infini (aucun risque)' };
   }
 
   // 3. Freeleech actif et exemption activée -> pas taggé
   const isFl = idx.tracker?.freeleech === true;
   if (config.taggingExcludeFreeleech && isFl) {
-    return { shouldTag: false, reason: 'Freeleech actif (exempté)' };
+    return { shouldTag: false, keepExisting: false, reason: 'Freeleech actif (exempté)' };
   }
 
-  // 4. Vérification du ratio
-  const ratio = typeof idx.tracker?.ratio === 'number' ? idx.tracker.ratio : null;
+  // 4. Vérification du ratio réel
+  const ratio = typeof idx.tracker?.ratio === 'number' && Number.isFinite(idx.tracker.ratio)
+    ? idx.tracker.ratio
+    : null;
   const threshold = typeof config.taggingRatioThreshold === 'number'
     ? config.taggingRatioThreshold
     : parseFloat(config.taggingRatioThreshold) || 1.0;
@@ -132,18 +151,29 @@ export function shouldTagIndexer(idx, config) {
     if (ratio < threshold) {
       return {
         shouldTag: true,
+        keepExisting: true,
         reason: `Ratio insuffisant (${ratio.toFixed(2)} < seuil ${threshold.toFixed(2)})`
       };
     } else {
       return {
         shouldTag: false,
+        keepExisting: false,
         reason: `Ratio suffisant (${ratio.toFixed(2)} >= seuil ${threshold.toFixed(2)})`
       };
     }
   }
 
-  // 5. Sans stats de ratio connues
-  return { shouldTag: false, reason: 'Ratio non configuré ou inconnu' };
+  // 5. Sans stats de ratio connues ou erreur temporaire de récupération :
+  // SÉCURITÉ CRITIQUE : on ne retire JAMAIS un tag existant si on n'a pas la confirmation
+  // formelle que le ratio est >= seuil ! Si l'indexeur est déjà marqué, on conserve le tag.
+  const alreadyTagged = !!idx.hasNoArrTag;
+  return {
+    shouldTag: alreadyTagged,
+    keepExisting: true,
+    reason: alreadyTagged
+      ? 'Stats temporairement indisponibles : tag conservé par sécurité'
+      : 'Ratio non configuré ou inconnu'
+  };
 }
 
 /**
@@ -221,9 +251,17 @@ export async function syncAllTags(customEnriched = null, overrideConfig = null) 
 
       for (const idx of prowlarrIndexers) {
         const dec = decisions.get(idx.id) || decisions.get(normalizeName(idx.name));
-        const shouldTag = dec ? dec.shouldTag : false;
         const currentTags = Array.isArray(idx.tags) ? idx.tags : [];
         const hasTag = currentTags.includes(prowlarrTagId);
+
+        let shouldTag = false;
+        if (dec) {
+          if (dec.keepExisting && hasTag) {
+            shouldTag = true;
+          } else {
+            shouldTag = !!dec.shouldTag;
+          }
+        }
 
         if (shouldTag && !hasTag) {
           const newTags = [...currentTags, prowlarrTagId];
@@ -258,7 +296,7 @@ export async function syncAllTags(customEnriched = null, overrideConfig = null) 
           'X-Api-Key': arrApiKey,
           'Accept': 'application/json'
         },
-        signal: AbortSignal.timeout(10000)
+        signal: AbortSignal.timeout(20000)
       });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -266,13 +304,20 @@ export async function syncAllTags(customEnriched = null, overrideConfig = null) 
       const arrIndexers = await res.json();
 
       for (const idx of arrIndexers) {
+        const prowlarrId = extractProwlarrIdFromArrIndexer(idx);
         const norm = normalizeName(idx.name);
-        const dec = decisions.get(norm);
+        const dec = (prowlarrId ? decisions.get(prowlarrId) : null) || decisions.get(norm);
         if (!dec) continue; // Pas géré par Sortarr / Prowlarr
 
-        const shouldTag = dec.shouldTag;
         const currentTags = Array.isArray(idx.tags) ? idx.tags : [];
         const hasTag = currentTags.includes(tagId);
+
+        let shouldTag = false;
+        if (dec.keepExisting && hasTag) {
+          shouldTag = true;
+        } else {
+          shouldTag = !!dec.shouldTag;
+        }
 
         if (shouldTag && !hasTag) {
           const newTags = [...currentTags, tagId];
@@ -284,7 +329,7 @@ export async function syncAllTags(customEnriched = null, overrideConfig = null) 
               'Accept': 'application/json'
             },
             body: JSON.stringify({ ...idx, tags: newTags }),
-            signal: AbortSignal.timeout(10000)
+            signal: AbortSignal.timeout(20000)
           });
           if (!putRes.ok) {
             const err = await putRes.text();
@@ -301,7 +346,7 @@ export async function syncAllTags(customEnriched = null, overrideConfig = null) 
               'Accept': 'application/json'
             },
             body: JSON.stringify({ ...idx, tags: newTags }),
-            signal: AbortSignal.timeout(10000)
+            signal: AbortSignal.timeout(20000)
           });
           if (!putRes.ok) {
             const err = await putRes.text();

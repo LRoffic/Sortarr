@@ -119,9 +119,9 @@ function getPath(obj, path) {
 
 /**
  * Effectue une requête HTTP(S) tolérante aux chaînes de certificats SSL incomplètes
- * (ex: UNABLE_TO_VERIFY_LEAF_SIGNATURE sur crazyspirits.com) tout en suivant les redirections.
+ * (ex: UNABLE_TO_VERIFY_LEAF_SIGNATURE sur crazyspirits.com ou yggreborn.org) tout en suivant les redirections.
  */
-function fetchWithTlsFallback(urlStr, { headers = {}, timeoutMs = 15000, maxRedirects = 5 } = {}) {
+function fetchWithTlsFallback(urlStr, { headers = {}, timeoutMs = 15000, maxRedirects = 5, redirect = 'follow' } = {}) {
   const startMs = Date.now();
   return new Promise((resolve, reject) => {
     const parsed = new URL(urlStr);
@@ -136,6 +136,7 @@ function fetchWithTlsFallback(urlStr, { headers = {}, timeoutMs = 15000, maxRedi
       },
       (res) => {
         if (
+          redirect !== 'manual' &&
           res.statusCode &&
           [301, 302, 303, 307, 308].includes(res.statusCode) &&
           res.headers.location &&
@@ -156,7 +157,8 @@ function fetchWithTlsFallback(urlStr, { headers = {}, timeoutMs = 15000, maxRedi
             fetchWithTlsFallback(nextUrl, {
               headers,
               timeoutMs,
-              maxRedirects: maxRedirects - 1
+              maxRedirects: maxRedirects - 1,
+              redirect
             })
           );
           return;
@@ -188,6 +190,7 @@ function fetchWithTlsFallback(urlStr, { headers = {}, timeoutMs = 15000, maxRedi
             ok: res.statusCode >= 200 && res.statusCode < 300,
             status: res.statusCode || 0,
             url: parsed.toString(),
+            headers: res.headers,
             text: async () => text,
             json: async () => JSON.parse(text)
           });
@@ -200,6 +203,7 @@ function fetchWithTlsFallback(urlStr, { headers = {}, timeoutMs = 15000, maxRedi
               ok: res.statusCode >= 200 && res.statusCode < 300,
               status: res.statusCode || 0,
               url: parsed.toString(),
+              headers: res.headers,
               text: async () => rawText,
               json: async () => JSON.parse(rawText)
             });
@@ -284,6 +288,24 @@ async function fetchJson(url, headers = {}) {
     return await res.json();
   } catch {
     throw new Error('Réponse non JSON (URL incorrecte ou clé invalide)');
+  }
+}
+
+/** Requête HTTP tolérante aux erreurs TLS/certificats pour pages HTML ou textes bruts */
+async function fetchHtml(url, options = {}) {
+  const reqHeaders = { 'User-Agent': DEFAULT_UA, ...options.headers };
+  try {
+    return await tracedFetch(url, {
+      ...options,
+      headers: reqHeaders,
+      signal: options.signal || AbortSignal.timeout(15000)
+    });
+  } catch (e) {
+    return await fetchWithTlsFallback(url, {
+      headers: reqHeaders,
+      timeoutMs: 15000,
+      redirect: options.redirect || 'follow'
+    });
   }
 }
 
@@ -1037,12 +1059,12 @@ export async function fetchYggRebornStats(baseUrl, apiKey) {
     : baseUrl.replace(/\/+$/, '').replace(/\/api(\/.*)?$/, '').replace(/\/account\/?$/, '');
   const reqHeaders = { 'User-Agent': DEFAULT_UA, Cookie: cookie };
   const [res, activeRes] = await Promise.all([
-    tracedFetch(`${origin}/account/`, {
+    fetchHtml(`${origin}/account/`, {
       redirect: 'manual',
       headers: reqHeaders,
       signal: AbortSignal.timeout(15000)
     }),
-    tracedFetch(`${origin}/account/torrents-actifs`, {
+    fetchHtml(`${origin}/account/torrents-actifs`, {
       redirect: 'manual',
       headers: reqHeaders,
       signal: AbortSignal.timeout(15000)

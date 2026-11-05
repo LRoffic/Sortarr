@@ -246,3 +246,16 @@ export function getFormattedStatsHistory(currentIndexers = []) {
     datesDesc: allDatesDesc
   };
 }
+
+/**
+ * Récupère les dernières statistiques valides enregistrées pour un indexeur (fallback en cas d'erreur de fetch).
+ */
+export function getLatestRecordedStats(indexerId) {
+  const store = loadHistoryStore();
+  const entry = store.trackers?.[String(indexerId)];
+  if (!entry || !entry.days) return null;
+  const dates = Object.keys(entry.days).sort();
+  if (dates.length === 0) return null;
+  const latestDate = dates[dates.length - 1];
+  return entry.days[latestDate] || null;
+}
