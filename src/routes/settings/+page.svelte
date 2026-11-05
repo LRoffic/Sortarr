@@ -3,6 +3,7 @@
   import { getTrackerLogo, getTrackerInitials } from '$lib/logos.js';
   import { markdownToHtml } from '$lib/markdown.js';
   import { formatDateTime, formatDate } from '$lib/formatters.js';
+  import { DEFAULT_PALIERS, formatPalierGB } from '$lib/paliers.js';
   import {
     changePasswordSchema,
     totpConfirmSchema,
@@ -138,6 +139,33 @@
   let telemetryEnabled = $state(untrack(() => data.config.telemetryEnabled !== false));
   let instanceId = $state(untrack(() => data.config.instanceId ?? ''));
 
+  // Paliers de statistiques (global vs par tracker)
+  let statsPaliers = $state(
+    untrack(() => ({
+      mode: data.config?.statsPaliers?.mode || 'global',
+      global: {
+        ratio: data.config?.statsPaliers?.global?.ratio ?? DEFAULT_PALIERS.ratio,
+        uploadGB: data.config?.statsPaliers?.global?.uploadGB ?? DEFAULT_PALIERS.uploadGB,
+        downloadGB: data.config?.statsPaliers?.global?.downloadGB ?? DEFAULT_PALIERS.downloadGB,
+        bufferGB: data.config?.statsPaliers?.global?.bufferGB ?? DEFAULT_PALIERS.bufferGB,
+        points: data.config?.statsPaliers?.global?.points ?? DEFAULT_PALIERS.points,
+        astra: data.config?.statsPaliers?.global?.astra ?? DEFAULT_PALIERS.astra,
+        seeds: data.config?.statsPaliers?.global?.seeds ?? DEFAULT_PALIERS.seeds
+      }
+    }))
+  );
+
+  function scrollToSection(e, targetId) {
+    if (e) e.preventDefault();
+    const el = document.getElementById(targetId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      try {
+        history.pushState(null, '', `#${targetId}`);
+      } catch {}
+    }
+  }
+
   let isTestingRadarr = $state(false);
   let radarrTestResult = $state(null);
   let isTestingSonarr = $state(false);
@@ -228,6 +256,7 @@
       sonarrApiKey,
       telemetryEnabled,
       instanceId,
+      statsPaliers: $state.snapshot(statsPaliers),
       trackers: $state.snapshot(trackers)
     };
 
@@ -501,7 +530,8 @@
     enabled: false, type: 'unit3d', baseUrl: '', apiKey: '',
     crazyUid: '', crazyPass: '', yggCfClearance: '', manualAstra: '',
     freeleech: 'auto', manualUpGB: '', manualDownGB: '', manualSeeds: '',
-    authMode: 'bearer', apiRatioKey: '', pathUp: '', pathDown: '', pathRatio: '', pathPoints: '', pathFl: ''
+    authMode: 'bearer', apiRatioKey: '', pathUp: '', pathDown: '', pathRatio: '', pathPoints: '', pathFl: '',
+    paliers: { ratio: '', uploadGB: '', downloadGB: '', bufferGB: '', points: '', astra: '', seeds: '' }
   });
   function guessTypeByName(name, privacy) {
     if (privacy === 'public') return 'public';
@@ -544,6 +574,15 @@
           type: guessTypeByName(idx.name, idx.privacy),
           ...(idx.privacy === 'public' && !saved ? { enabled: true, type: 'public' } : {}),
           ...(saved ?? {}),
+          paliers: {
+            ratio: saved?.paliers?.ratio ?? '',
+            uploadGB: saved?.paliers?.uploadGB ?? '',
+            downloadGB: saved?.paliers?.downloadGB ?? '',
+            bufferGB: saved?.paliers?.bufferGB ?? '',
+            points: saved?.paliers?.points ?? '',
+            astra: saved?.paliers?.astra ?? '',
+            seeds: saved?.paliers?.seeds ?? ''
+          },
           crazyUid,
           crazyPass,
           yggCfClearance
@@ -693,6 +732,7 @@
       sonarrApiKey,
       telemetryEnabled,
       instanceId,
+      statsPaliers: $state.snapshot(statsPaliers),
       trackers: $state.snapshot(trackers)
     };
 
@@ -777,9 +817,113 @@
       </span>
     {/if}
   </div>
-  <p class="text-sm mb-8" style="color: var(--text-muted);">
+  <p class="text-sm mb-6" style="color: var(--text-muted);">
     Paramètres de connexion à votre instance Prowlarr et aux services associés.
   </p>
+
+  <!-- Menu Aside d'Index et Navigation rapide (Smooth Scroll) -->
+  <aside
+    class="settings-index-aside sticky top-16 z-30 mb-8 rounded-2xl p-3.5 border shadow-xl backdrop-blur-md transition-all"
+    style="background: #141722f5; border-color: #334155aa;"
+    aria-label="Index de la configuration"
+  >
+    <div class="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-700/50">
+      <div class="flex items-center gap-2">
+        <span class="text-sm">📑</span>
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-200">
+          Index de configuration
+        </span>
+      </div>
+      <span class="text-[11px] text-purple-400 font-medium">
+        ⚡ Accès rapide
+      </span>
+    </div>
+
+    <!-- Grille de raccourcis avec smooth scroll -->
+    <nav class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs">
+      <a
+        href="#prowlarr"
+        onclick={(e) => scrollToSection(e, 'prowlarr')}
+        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+      >
+        <span>🌐</span> <span class="truncate">Prowlarr</span>
+      </a>
+      <a
+        href="#autosort"
+        onclick={(e) => scrollToSection(e, 'autosort')}
+        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+      >
+        <span>⚡</span> <span class="truncate">Tri & Cycle</span>
+      </a>
+      <a
+        href="#tagging"
+        onclick={(e) => scrollToSection(e, 'tagging')}
+        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+      >
+        <span>🏷️</span> <span class="truncate">Marquage Arr</span>
+      </a>
+      <a
+        href="#paliers"
+        onclick={(e) => scrollToSection(e, 'paliers')}
+        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800 font-medium"
+        style="background: #7c3aed15; border-color: #7c3aed55; color: #c4b5fd;"
+      >
+        <span>🎯</span> <span class="truncate">Paliers stats</span>
+      </a>
+      <a
+        href="#apiratio"
+        onclick={(e) => scrollToSection(e, 'apiratio')}
+        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+      >
+        <span>📡</span> <span class="truncate">api-ratio</span>
+      </a>
+      <a
+        href="#trackers"
+        onclick={(e) => scrollToSection(e, 'trackers')}
+        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+      >
+        <span>📊</span> <span class="truncate">Trackers</span>
+      </a>
+      <a
+        href="#security"
+        onclick={(e) => scrollToSection(e, 'security')}
+        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800 col-span-2 sm:col-span-3 font-semibold"
+        style="background: #3b82f615; border-color: #3b82f655; color: #93c5fd;"
+        title="Sécurité : Mot de passe, 2FA & reCAPTCHA"
+      >
+        <span>🔐</span> <span class="truncate"># Sécurité : Mot de passe, 2FA &amp; reCAPTCHA</span>
+      </a>
+      <a
+        href="#update"
+        onclick={(e) => scrollToSection(e, 'update')}
+        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+      >
+        <span>🔄</span> <span class="truncate">Mises à jour</span>
+      </a>
+      <a
+        href="#telemetry"
+        onclick={(e) => scrollToSection(e, 'telemetry')}
+        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+      >
+        <span>🛰️</span> <span class="truncate">Télémétrie</span>
+      </a>
+      <a
+        href="#contributors"
+        onclick={(e) => scrollToSection(e, 'contributors')}
+        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
+        style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
+      >
+        <span>👥</span> <span class="truncate">Contributeurs</span>
+      </a>
+    </nav>
+  </aside>
 
   <!-- Connection status card -->
   {#if saveResult?.ok}
@@ -799,11 +943,12 @@
   {/if}
 
   <form onsubmit={saveSettings} class="space-y-6">
-    <!-- Prowlarr URL -->
-    <div>
-      <label class="block text-sm font-semibold mb-2" for="prowlarrUrl">
-        🌐 URL de Prowlarr
-      </label>
+    <!-- Prowlarr URL & API Key -->
+    <div id="prowlarr" class="scroll-mt-20 space-y-4">
+      <div>
+        <label class="block text-sm font-semibold mb-2" for="prowlarrUrl">
+          🌐 URL de Prowlarr
+        </label>
       <input
         id="prowlarrUrl"
         name="prowlarrUrl"
@@ -874,10 +1019,11 @@
           </button>
         </div>
       {/if}
+      </div>
     </div>
 
     <!-- ── Auto-tri automatique ── -->
-    <div class="rounded-xl p-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+    <div id="autosort" class="scroll-mt-20 rounded-xl p-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
       <div class="flex items-center justify-between mb-3">
         <div>
           <div class="text-sm font-semibold">✨ Auto-tri en arrière-plan</div>
@@ -924,7 +1070,7 @@
     </div>
 
     <!-- ── Marquage par Tag selon le ratio (Radarr / Sonarr / cross-seed) ── -->
-    <div class="rounded-xl p-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+    <div id="tagging" class="scroll-mt-20 rounded-xl p-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
       <div class="flex items-center justify-between mb-3">
         <div>
           <div class="text-sm font-semibold flex items-center gap-2">
@@ -1195,8 +1341,204 @@
       {/if}
     </div>
 
+    <!-- ── Paliers des statistiques (Global vs Par tracker) ── -->
+    <div id="paliers" class="scroll-mt-20 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+      <div class="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
+        <div>
+          <div class="text-sm font-semibold flex items-center gap-2">
+            <span>🎯</span> Paliers des statistiques (Objectifs des jauges)
+          </div>
+          <div class="text-xs mt-0.5" style="color: var(--text-muted);">
+            Personnalisez les paliers d'objectifs (seuil 100%) pour le calcul des jauges et tooltips (Ratio, Upload, Download, Buffer, Karma/Points, Astra, Seeds).
+          </div>
+        </div>
+      </div>
+
+      <!-- Sélecteur de mode : Global vs Par tracker -->
+      <div class="p-3 rounded-lg space-y-2.5" style="background: var(--bg-card); border: 1px solid var(--border);">
+        <div class="text-xs font-semibold text-slate-300">Mode d'application des paliers :</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <label class="flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all {statsPaliers.mode === 'global' ? 'border-purple-500 bg-purple-500/10' : 'border-slate-800 bg-slate-900/40'}">
+            <input
+              type="radio"
+              name="statsPaliersMode"
+              value="global"
+              bind:group={statsPaliers.mode}
+              class="mt-0.5 text-purple-600 focus:ring-purple-500"
+            />
+            <div>
+              <div class="text-xs font-semibold" style="color: {statsPaliers.mode === 'global' ? '#c4b5fd' : '#e2e8f0'};">
+                🌐 Paliers globaux
+              </div>
+              <div class="text-[11px]" style="color: var(--text-muted);">
+                Mêmes objectifs partagés par l'ensemble des trackers
+              </div>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all {statsPaliers.mode === 'tracker' ? 'border-purple-500 bg-purple-500/10' : 'border-slate-800 bg-slate-900/40'}">
+            <input
+              type="radio"
+              name="statsPaliersMode"
+              value="tracker"
+              bind:group={statsPaliers.mode}
+              class="mt-0.5 text-purple-600 focus:ring-purple-500"
+            />
+            <div>
+              <div class="text-xs font-semibold" style="color: {statsPaliers.mode === 'tracker' ? '#c4b5fd' : '#e2e8f0'};">
+                📊 Paliers par tracker
+              </div>
+              <div class="text-[11px]" style="color: var(--text-muted);">
+                Personnalisation individuelle dans chaque carte de tracker
+              </div>
+            </div>
+          </label>
+        </div>
+
+        {#if statsPaliers.mode === 'tracker'}
+          <div class="text-[11px] text-purple-300/90 bg-purple-950/40 p-2.5 rounded-lg border border-purple-800/40 flex items-center gap-2">
+            <span>💡</span>
+            <span>En mode <strong>Par tracker</strong>, réglez les objectifs propres à chaque tracker directement dans sa carte ci-dessous. Les valeurs ci-après servent de repli par défaut.</span>
+          </div>
+        {/if}
+      </div>
+
+      <!-- Valeurs globales -->
+      <div class="p-3 rounded-lg space-y-3" style="background: var(--bg-card); border: 1px solid var(--border);">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="text-xs font-semibold text-slate-300">
+            {statsPaliers.mode === 'tracker' ? 'Valeurs globales par défaut :' : 'Valeurs des paliers globaux :'}
+          </div>
+          <button
+            type="button"
+            onclick={() => {
+              statsPaliers.global = { ...DEFAULT_PALIERS };
+            }}
+            class="text-[11px] text-purple-400 hover:text-purple-300 underline cursor-pointer"
+          >
+            Rétablir les valeurs par défaut
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <div>
+            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-ratio">
+              Ratio actuel
+            </label>
+            <input
+              id="palier-ratio"
+              type="number"
+              step="0.1"
+              min="0.1"
+              max="100"
+              bind:value={statsPaliers.global.ratio}
+              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+            />
+            <span class="text-[10px] text-slate-500">Défaut: 4.0</span>
+          </div>
+
+          <div>
+            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-upload">
+              Upload (Go)
+            </label>
+            <input
+              id="palier-upload"
+              type="number"
+              step="1"
+              min="1"
+              bind:value={statsPaliers.global.uploadGB}
+              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+            />
+            <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.uploadGB)}</span>
+          </div>
+
+          <div>
+            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-download">
+              Download (Go)
+            </label>
+            <input
+              id="palier-download"
+              type="number"
+              step="1"
+              min="1"
+              bind:value={statsPaliers.global.downloadGB}
+              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #cbd5e1;"
+            />
+            <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.downloadGB)}</span>
+          </div>
+
+          <div>
+            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-buffer">
+              Buffer (Go)
+            </label>
+            <input
+              id="palier-buffer"
+              type="number"
+              step="1"
+              min="1"
+              bind:value={statsPaliers.global.bufferGB}
+              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+            />
+            <span class="text-[10px] text-slate-500">{formatPalierGB(statsPaliers.global.bufferGB)}</span>
+          </div>
+
+          <div>
+            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-points">
+              Points / Karma
+            </label>
+            <input
+              id="palier-points"
+              type="number"
+              step="500"
+              min="0"
+              bind:value={statsPaliers.global.points}
+              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #facc15;"
+            />
+            <span class="text-[10px] text-slate-500">Défaut: 25 000</span>
+          </div>
+
+          <div>
+            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-astra">
+              Astra (site)
+            </label>
+            <input
+              id="palier-astra"
+              type="number"
+              step="50"
+              min="0"
+              bind:value={statsPaliers.global.astra}
+              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #c084fc;"
+            />
+            <span class="text-[10px] text-slate-500">Défaut: 1 000</span>
+          </div>
+
+          <div class="col-span-2 sm:col-span-2">
+            <label class="block text-[11px] mb-1 font-medium" style="color: var(--text-muted);" for="palier-seeds">
+              Seeds actifs
+            </label>
+            <input
+              id="palier-seeds"
+              type="number"
+              step="10"
+              min="0"
+              bind:value={statsPaliers.global.seeds}
+              class="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono"
+              style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+            />
+            <span class="text-[10px] text-slate-500">Défaut: 150</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Trackers : stats réelles (ratio / buffer / freeleech) ── -->
-    <div class="rounded-xl p-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+    <div id="trackers" class="scroll-mt-20 rounded-xl p-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
       <div class="flex items-start justify-between gap-3 mb-3 flex-wrap sm:flex-nowrap">
         <div>
           <div class="text-sm font-semibold">📊 Trackers (ratio, buffer, freeleech)</div>
@@ -1369,7 +1711,7 @@
         <p class="text-xs" style="color: var(--text-muted);">Sauvegardez d'abord l'URL et la clé API Prowlarr, puis rechargez la page.</p>
       {/if}
 
-      <div class="mb-3 p-3.5 rounded-xl space-y-2.5" style="background: var(--bg-card); border: 1px solid var(--border);">
+      <div id="apiratio" class="scroll-mt-20 mb-3 p-3.5 rounded-xl space-y-2.5" style="background: var(--bg-card); border: 1px solid var(--border);">
         <label class="block text-xs font-semibold" for="apiRatioUrl">
           🐳 URL du service <code>api-ratio</code> (optionnel — <a href="https://github.com/kreezx/api-ratio" target="_blank" class="underline" style="color: #a78bfa;">kreezx/api-ratio</a>)
         </label>
@@ -1572,6 +1914,129 @@
                   <input type="number" step="1" min="0" bind:value={t.manualSeeds} placeholder="🌱 Torrents en seed actifs sur ce tracker (optionnel, ex: 15)"
                          class="px-2 py-1.5 rounded col-span-2" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
                 {/if}
+
+                <!-- Paliers personnalisés pour ce tracker (si mode tracker actif) -->
+                {#if statsPaliers.mode === 'tracker'}
+                  <div class="col-span-2 mt-2 pt-2 rounded-lg p-2.5 space-y-2" style="background: var(--bg-card); border: 1px solid var(--border);">
+                    <div class="flex items-center justify-between flex-wrap gap-1">
+                      <span class="text-[11px] font-semibold flex items-center gap-1.5" style="color: #c4b5fd;">
+                        🎯 Paliers d'objectifs pour {idx.name}
+                      </span>
+                      {#if t.paliers && Object.values(t.paliers).some(v => v !== '' && v !== null && v !== undefined)}
+                        <button
+                          type="button"
+                          onclick={() => {
+                            t.paliers = { ratio: '', uploadGB: '', downloadGB: '', bufferGB: '', points: '', astra: '', seeds: '' };
+                          }}
+                          class="text-[10px] text-purple-400 hover:text-purple-300 underline cursor-pointer"
+                        >
+                          Rétablir valeurs globales
+                        </button>
+                      {/if}
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Ratio ({statsPaliers.global.ratio})
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0.1"
+                            bind:value={t.paliers.ratio}
+                            placeholder={String(statsPaliers.global.ratio)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Upload Go ({statsPaliers.global.uploadGB})
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            bind:value={t.paliers.uploadGB}
+                            placeholder={String(statsPaliers.global.uploadGB)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Download Go ({statsPaliers.global.downloadGB})
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            bind:value={t.paliers.downloadGB}
+                            placeholder={String(statsPaliers.global.downloadGB)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-secondary); border: 1px solid var(--border); color: #cbd5e1;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Buffer Go ({statsPaliers.global.bufferGB})
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            bind:value={t.paliers.bufferGB}
+                            placeholder={String(statsPaliers.global.bufferGB)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Points ({statsPaliers.global.points})
+                          <input
+                            type="number"
+                            step="500"
+                            min="0"
+                            bind:value={t.paliers.points}
+                            placeholder={String(statsPaliers.global.points)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-secondary); border: 1px solid var(--border); color: #facc15;"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-400">
+                          Astra ({statsPaliers.global.astra})
+                          <input
+                            type="number"
+                            step="50"
+                            min="0"
+                            bind:value={t.paliers.astra}
+                            placeholder={String(statsPaliers.global.astra)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-secondary); border: 1px solid var(--border); color: #c084fc;"
+                          />
+                        </label>
+                      </div>
+                      <div class="col-span-2 sm:col-span-2">
+                        <label class="block text-[10px] text-slate-400">
+                          Seeds ({statsPaliers.global.seeds})
+                          <input
+                            type="number"
+                            step="10"
+                            min="0"
+                            bind:value={t.paliers.seeds}
+                            placeholder={String(statsPaliers.global.seeds)}
+                            class="w-full mt-0.5 px-2 py-1 rounded text-[11px] font-mono"
+                            style="background: var(--bg-secondary); border: 1px solid var(--border); color: #4ade80;"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                {/if}
               </div>
             {/if}
 
@@ -1736,7 +2201,7 @@
 
 
   <!-- Sécurité : Mot de passe, 2FA & reCAPTCHA -->
-  <div class="mt-8 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+  <div id="security" class="scroll-mt-20 mt-8 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
     <div>
       <h3 class="text-sm font-semibold">🔐 Sécurité : Mot de passe, 2FA &amp; reCAPTCHA</h3>
       <p class="text-xs mt-0.5" style="color: var(--text-muted);">
@@ -2001,7 +2466,7 @@
   </div>
 
   <!-- Système de mise à jour (GitHub Releases : LRoffic/Sortarr) -->
-  <div id="update" class="mt-8 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+  <div id="update" class="scroll-mt-20 mt-8 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
     <div class="flex items-start justify-between gap-3 flex-wrap">
       <div>
         <h3 class="text-sm font-semibold">🔄 Mise à jour automatique (GitHub Releases)</h3>
@@ -2224,7 +2689,7 @@
   </div>
 
   <!-- Télémétrie anonyme -->
-  <div id="telemetry" class="mt-8 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+  <div id="telemetry" class="scroll-mt-20 mt-8 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
     <div class="flex items-start justify-between gap-3 flex-wrap">
       <div>
         <div class="flex items-center gap-2">
@@ -2331,7 +2796,7 @@
   </div>
 
   <!-- Carte des contributeurs GitHub -->
-  <div id="contributors" class="mt-8 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+  <div id="contributors" class="scroll-mt-20 mt-8 rounded-xl p-4 space-y-4" style="background: var(--bg-secondary); border: 1px solid var(--border);">
     <div class="flex items-start justify-between gap-3 flex-wrap">
       <div>
         <div class="flex items-center gap-2">

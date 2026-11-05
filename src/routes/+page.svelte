@@ -5,6 +5,7 @@
   import { sortIndexers } from '$lib/sorting.js';
   import { getTrackerLogo, getTrackerInitials } from '$lib/logos.js';
   import { scrollAnimate } from '$lib/animate.js';
+  import { getEffectivePaliers, formatPalierGB } from '$lib/paliers.js';
 
   let { data } = $props();
   let failedLogos = $state({});
@@ -143,6 +144,10 @@
       return pts.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
     }
     return Math.round(pts).toLocaleString('fr-FR');
+  }
+
+  function getIndexerPaliers(indexer) {
+    return getEffectivePaliers(indexer?.id, data?.statsPaliers, data?.trackerPaliersMap);
   }
 
   let trackersWithPoints = $derived(
@@ -494,6 +499,7 @@
               ⚠️ Stats indisponibles<br /><span class="truncate block" style="color: var(--text-muted);">{indexer.tracker.error}</span>
             </div>
           {:else if indexer.tracker}
+            {@const pal = getIndexerPaliers(indexer)}
             <div class="hidden sm:grid grid-cols-6 gap-3.5 text-xs text-right flex-shrink-0">
               <div class="flex flex-col justify-between">
                 <div>
@@ -504,9 +510,9 @@
                 </div>
                 <div
                   class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
-                  data-tooltip={indexer.tracker.infinite ? 'Ratio : ∞ (Illimité)' : `Ratio : ${(indexer.tracker.ratio ?? 0).toFixed(2)} / 4.0 (${Math.min(100, Math.round(((indexer.tracker.ratio ?? 0) / 4) * 100))}% de l'objectif)`}
+                  data-tooltip={indexer.tracker.infinite ? 'Ratio : ∞ (Illimité)' : `Ratio : ${(indexer.tracker.ratio ?? 0).toFixed(2)} / ${pal.ratio.toFixed(1)} (${Math.min(100, Math.round(((indexer.tracker.ratio ?? 0) / pal.ratio) * 100))}% de l'objectif)`}
                 >
-                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {indexer.tracker.infinite ? 100 : Math.min(100, Math.max(12, ((indexer.tracker.ratio ?? 0) / 4) * 100))}%; background: {getRatioColor(indexer.tracker)};"></div>
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {indexer.tracker.infinite ? 100 : Math.min(100, Math.max(12, ((indexer.tracker.ratio ?? 0) / pal.ratio) * 100))}%; background: {getRatioColor(indexer.tracker)};"></div>
                 </div>
               </div>
               <div class="flex flex-col justify-between">
@@ -516,9 +522,9 @@
                 </div>
                 <div
                   class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
-                  data-tooltip={`Upload : ${formatBytes(indexer.tracker.uploaded)} / 2 To (${Math.min(100, Math.round(((indexer.tracker.uploaded ?? 0) / (2 * 1024 ** 4)) * 100))}% du palier)`}
+                  data-tooltip={`Upload : ${formatBytes(indexer.tracker.uploaded)} / ${formatPalierGB(pal.uploadGB)} (${Math.min(100, Math.round(((indexer.tracker.uploaded ?? 0) / (pal.uploadGB * 1024 ** 3)) * 100))}% du palier)`}
                 >
-                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.uploaded ?? 0) / (2 * 1024 ** 4)) * 100))}%; background: #4ade80;"></div>
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.uploaded ?? 0) / (pal.uploadGB * 1024 ** 3)) * 100))}%; background: #4ade80;"></div>
                 </div>
               </div>
               <div class="flex flex-col justify-between">
@@ -528,9 +534,9 @@
                 </div>
                 <div
                   class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
-                  data-tooltip={`Download : ${formatBytes(indexer.tracker.downloaded)} / 2 To (${Math.min(100, Math.round(((indexer.tracker.downloaded ?? 0) / (2 * 1024 ** 4)) * 100))}% du palier)`}
+                  data-tooltip={`Download : ${formatBytes(indexer.tracker.downloaded)} / ${formatPalierGB(pal.downloadGB)} (${Math.min(100, Math.round(((indexer.tracker.downloaded ?? 0) / (pal.downloadGB * 1024 ** 3)) * 100))}% du palier)`}
                 >
-                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.downloaded ?? 0) / (2 * 1024 ** 4)) * 100))}%; background: #94a3b8;"></div>
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.downloaded ?? 0) / (pal.downloadGB * 1024 ** 3)) * 100))}%; background: #94a3b8;"></div>
                 </div>
               </div>
               <div class="flex flex-col justify-between">
@@ -542,9 +548,9 @@
                 </div>
                 <div
                   class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
-                  data-tooltip={indexer.tracker.infinite && indexer.tracker.buffer === null ? 'Buffer : ∞ (Illimité)' : `Buffer : ${formatBytes(indexer.tracker.buffer)} / 1 To (${Math.min(100, Math.round((Math.abs(indexer.tracker.buffer ?? 0) / (1024 ** 4)) * 100))}% du palier)`}
+                  data-tooltip={indexer.tracker.infinite && indexer.tracker.buffer === null ? 'Buffer : ∞ (Illimité)' : `Buffer : ${formatBytes(indexer.tracker.buffer)} / ${formatPalierGB(pal.bufferGB)} (${Math.min(100, Math.round((Math.abs(indexer.tracker.buffer ?? 0) / (pal.bufferGB * 1024 ** 3)) * 100))}% du palier)`}
                 >
-                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {indexer.tracker.infinite ? 100 : Math.min(100, Math.max(12, (Math.abs(indexer.tracker.buffer ?? 0) / (1024 ** 4)) * 100))}%; background: {indexer.tracker.buffer < 0 ? '#ef4444' : '#4ade80'};"></div>
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {indexer.tracker.infinite ? 100 : Math.min(100, Math.max(12, (Math.abs(indexer.tracker.buffer ?? 0) / (pal.bufferGB * 1024 ** 3)) * 100))}%; background: {indexer.tracker.buffer < 0 ? '#ef4444' : '#4ade80'};"></div>
                 </div>
               </div>
               <div class="flex flex-col justify-between">
@@ -563,9 +569,9 @@
                 </div>
                 <div
                   class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
-                  data-tooltip={`${indexer.tracker.pointsLabel || 'POINTS'} : ${formatPoints(indexer.tracker.points)} / 25 000 (${Math.min(100, Math.round(((indexer.tracker.points ?? 0) / 25000) * 100))}% du palier)`}
+                  data-tooltip={`${indexer.tracker.pointsLabel || 'POINTS'} : ${formatPoints(indexer.tracker.points)} / ${pal.points.toLocaleString('fr-FR')} (${Math.min(100, Math.round(((indexer.tracker.points ?? 0) / pal.points) * 100))}% du palier)`}
                 >
-                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.points ?? 0) / 25000) * 100))}%; background: #facc15;"></div>
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.points ?? 0) / pal.points) * 100))}%; background: #facc15;"></div>
                 </div>
               </div>
               <div class="flex flex-col justify-between">
@@ -582,9 +588,9 @@
                 </div>
                 <div
                   class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
-                  data-tooltip={`Seeds : ${indexer.tracker.seeding ?? 0} / 150 (${Math.min(100, Math.round(((indexer.tracker.seeding ?? 0) / 150) * 100))}% de l'objectif)`}
+                  data-tooltip={`Seeds : ${indexer.tracker.seeding ?? 0} / ${pal.seeds.toLocaleString('fr-FR')} (${Math.min(100, Math.round(((indexer.tracker.seeding ?? 0) / pal.seeds) * 100))}% de l'objectif)`}
                 >
-                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.seeding ?? 0) / 150) * 100))}%; background: #4ade80;"></div>
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.seeding ?? 0) / pal.seeds) * 100))}%; background: #4ade80;"></div>
                 </div>
               </div>
             </div>

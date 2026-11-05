@@ -3,8 +3,13 @@
   import { getTrackerLogo, getTrackerInitials } from '$lib/logos.js';
   import { scrollAnimate } from '$lib/animate.js';
   import EvolutionChart from '$lib/EvolutionChart.svelte';
+  import { getEffectivePaliers, formatPalierGB } from '$lib/paliers.js';
 
   let { data } = $props();
+
+  function getTrPaliers(trackerId) {
+    return getEffectivePaliers(trackerId, data?.statsPaliers, data?.trackerPaliersMap);
+  }
 
   let trackers = $state(untrack(() => data.trackers ?? []));
   let datesDesc = $state(untrack(() => data.datesDesc ?? []));
@@ -514,6 +519,7 @@
         {@const activeMetric = getMetric(tr.id)}
         {@const chart = buildChartPoints(tr.historyAsc, activeMetric, ptsLabel)}
         {@const rowsDesc = tr.historyDesc.slice(0, periodDays)}
+        {@const pal = getTrPaliers(tr.id)}
         <div
           use:scrollAnimate
           class="stat-scroll-trigger rounded-2xl p-5 space-y-4"
@@ -636,9 +642,9 @@
                 <div
                   class="h-1 w-full rounded-full overflow-hidden mt-1.5 cursor-help"
                   style="background: #1e293b;"
-                  data-tooltip={tr.latest?.infinite ? 'Ratio actuel : ∞ (Illimité)' : `Ratio actuel : ${(tr.latest?.ratio ?? 0).toFixed(2)} / 4.0 (${Math.min(100, Math.round(((tr.latest?.ratio ?? 0) / 4) * 100))}% de l'objectif)`}
+                  data-tooltip={tr.latest?.infinite ? 'Ratio actuel : ∞ (Illimité)' : `Ratio actuel : ${(tr.latest?.ratio ?? 0).toFixed(2)} / ${pal.ratio.toFixed(1)} (${Math.min(100, Math.round(((tr.latest?.ratio ?? 0) / pal.ratio) * 100))}% de l'objectif)`}
                 >
-                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {tr.latest?.infinite ? 100 : Math.min(100, Math.max(12, ((tr.latest?.ratio ?? 0) / 4) * 100))}%; background: #4ade80;"></div>
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {tr.latest?.infinite ? 100 : Math.min(100, Math.max(12, ((tr.latest?.ratio ?? 0) / pal.ratio) * 100))}%; background: #4ade80;"></div>
                 </div>
               </div>
 
@@ -660,9 +666,9 @@
                 <div
                   class="h-1 w-full rounded-full overflow-hidden mt-1.5 cursor-help"
                   style="background: #1e293b;"
-                  data-tooltip={`Upload : ${fmtBytes(tr.latest?.uploaded)} / 2 To (${Math.min(100, Math.round(((tr.latest?.uploaded ?? 0) / (2 * 1024 ** 4)) * 100))}% du palier)`}
+                  data-tooltip={`Upload : ${fmtBytes(tr.latest?.uploaded)} / ${formatPalierGB(pal.uploadGB)} (${Math.min(100, Math.round(((tr.latest?.uploaded ?? 0) / (pal.uploadGB * 1024 ** 3)) * 100))}% du palier)`}
                 >
-                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((tr.latest?.uploaded ?? 0) / (2 * 1024 ** 4)) * 100))}%; background: #4ade80;"></div>
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((tr.latest?.uploaded ?? 0) / (pal.uploadGB * 1024 ** 3)) * 100))}%; background: #4ade80;"></div>
                 </div>
               </div>
 
@@ -681,9 +687,9 @@
                 <div
                   class="h-1 w-full rounded-full overflow-hidden mt-1.5 cursor-help"
                   style="background: #1e293b;"
-                  data-tooltip={`Download : ${fmtBytes(tr.latest?.downloaded)} / 2 To (${Math.min(100, Math.round(((tr.latest?.downloaded ?? 0) / (2 * 1024 ** 4)) * 100))}% du palier)`}
+                  data-tooltip={`Download : ${fmtBytes(tr.latest?.downloaded)} / ${formatPalierGB(pal.downloadGB)} (${Math.min(100, Math.round(((tr.latest?.downloaded ?? 0) / (pal.downloadGB * 1024 ** 3)) * 100))}% du palier)`}
                 >
-                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((tr.latest?.downloaded ?? 0) / (2 * 1024 ** 4)) * 100))}%; background: #94a3b8;"></div>
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((tr.latest?.downloaded ?? 0) / (pal.downloadGB * 1024 ** 3)) * 100))}%; background: #94a3b8;"></div>
                 </div>
               </div>
 
@@ -708,9 +714,9 @@
                 <div
                   class="h-1 w-full rounded-full overflow-hidden mt-1.5 cursor-help"
                   style="background: #1e293b;"
-                  data-tooltip={tr.latest?.infinite && tr.latest?.buffer === null ? 'Buffer : ∞ (Illimité)' : `Buffer : ${fmtBytes(tr.latest?.buffer)} / 1 To (${Math.min(100, Math.round((Math.abs(tr.latest?.buffer ?? 0) / (1024 ** 4)) * 100))}% du palier)`}
+                  data-tooltip={tr.latest?.infinite && tr.latest?.buffer === null ? 'Buffer : ∞ (Illimité)' : `Buffer : ${fmtBytes(tr.latest?.buffer)} / ${formatPalierGB(pal.bufferGB)} (${Math.min(100, Math.round((Math.abs(tr.latest?.buffer ?? 0) / (pal.bufferGB * 1024 ** 3)) * 100))}% du palier)`}
                 >
-                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {tr.latest?.infinite ? 100 : Math.min(100, Math.max(12, (Math.abs(tr.latest?.buffer ?? 0) / (1024 ** 4)) * 100))}%; background: {(tr.latest?.buffer ?? 0) < 0 ? '#f87171' : '#4ade80'};"></div>
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {tr.latest?.infinite ? 100 : Math.min(100, Math.max(12, (Math.abs(tr.latest?.buffer ?? 0) / (pal.bufferGB * 1024 ** 3)) * 100))}%; background: {(tr.latest?.buffer ?? 0) < 0 ? '#f87171' : '#4ade80'};"></div>
                 </div>
               </div>
 
@@ -737,9 +743,9 @@
                 <div
                   class="h-1 w-full rounded-full overflow-hidden mt-1.5 cursor-help"
                   style="background: #42200644;"
-                  data-tooltip={`${isAstra ? 'Karma' : ptsLabel} : ${fmtPoints(currentPts)} / 25 000 (${Math.min(100, Math.round(((currentPts ?? 0) / 25000) * 100))}% du palier)`}
+                  data-tooltip={`${isAstra ? 'Karma' : ptsLabel} : ${fmtPoints(currentPts)} / ${pal.points.toLocaleString('fr-FR')} (${Math.min(100, Math.round(((currentPts ?? 0) / pal.points) * 100))}% du palier)`}
                 >
-                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((currentPts ?? 0) / 25000) * 100))}%; background: #facc15;"></div>
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((currentPts ?? 0) / pal.points) * 100))}%; background: #facc15;"></div>
                 </div>
               </div>
 
@@ -765,9 +771,9 @@
                   <div
                     class="h-1 w-full rounded-full overflow-hidden mt-1.5 cursor-help"
                     style="background: #581c8744;"
-                    data-tooltip={`Astra : ${currentAstra !== null && currentAstra !== undefined ? fmtPoints(currentAstra) : 0} / 1 000 (${Math.min(100, Math.round(((currentAstra ?? 0) / 1000) * 100))}% du palier)`}
+                    data-tooltip={`Astra : ${currentAstra !== null && currentAstra !== undefined ? fmtPoints(currentAstra) : 0} / ${pal.astra.toLocaleString('fr-FR')} (${Math.min(100, Math.round(((currentAstra ?? 0) / pal.astra) * 100))}% du palier)`}
                   >
-                    <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((currentAstra ?? 0) / 1000) * 100))}%; background: #c084fc;"></div>
+                    <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((currentAstra ?? 0) / pal.astra) * 100))}%; background: #c084fc;"></div>
                   </div>
                 </div>
               {/if}
@@ -791,9 +797,9 @@
                 <div
                   class="h-1 w-full rounded-full overflow-hidden mt-1.5 cursor-help"
                   style="background: #1e293b;"
-                  data-tooltip={`Seeds : ${currentSeeds ?? 0} / 150 (${Math.min(100, Math.round(((currentSeeds ?? 0) / 150) * 100))}% de l'objectif)`}
+                  data-tooltip={`Seeds : ${currentSeeds ?? 0} / ${pal.seeds.toLocaleString('fr-FR')} (${Math.min(100, Math.round(((currentSeeds ?? 0) / pal.seeds) * 100))}% de l'objectif)`}
                 >
-                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((currentSeeds ?? 0) / 150) * 100))}%; background: #4ade80;"></div>
+                  <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((currentSeeds ?? 0) / pal.seeds) * 100))}%; background: #4ade80;"></div>
                 </div>
               </div>
             </div>

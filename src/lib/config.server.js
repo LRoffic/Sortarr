@@ -27,7 +27,20 @@ const defaultConfig = {
   radarrApiKey: '',
   sonarrUrl: '',
   sonarrApiKey: '',
-  // { [indexerId]: { enabled, type: 'unit3d'|'manual', baseUrl, apiKey, freeleech: 'auto'|'on'|'off', manualUpGB, manualDownGB } }
+  // Paliers d'objectifs pour les jauges de statistiques (global vs par tracker)
+  statsPaliers: {
+    mode: 'global', // 'global' | 'tracker'
+    global: {
+      ratio: 4.0,
+      uploadGB: 2048,
+      downloadGB: 2048,
+      bufferGB: 1024,
+      points: 25000,
+      astra: 1000,
+      seeds: 150
+    }
+  },
+  // { [indexerId]: { enabled, type: 'unit3d'|'manual', baseUrl, apiKey, freeleech: 'auto'|'on'|'off', manualUpGB, manualDownGB, paliers: {} } }
   trackers: {}
 };
 

@@ -90,7 +90,16 @@ export async function POST({ request }) {
         freeleech: ['on', 'off'].includes(t.freeleech) ? t.freeleech : 'auto',
         manualUpGB: t.manualUpGB ?? '',
         manualDownGB: t.manualDownGB ?? '',
-        manualAstra: t.manualAstra ?? ''
+        manualAstra: t.manualAstra ?? '',
+        paliers: t.paliers && typeof t.paliers === 'object' ? {
+          ratio: Number(t.paliers.ratio) > 0 ? Number(t.paliers.ratio) : null,
+          uploadGB: Number(t.paliers.uploadGB) > 0 ? Number(t.paliers.uploadGB) : null,
+          downloadGB: Number(t.paliers.downloadGB) > 0 ? Number(t.paliers.downloadGB) : null,
+          bufferGB: Number(t.paliers.bufferGB) > 0 ? Number(t.paliers.bufferGB) : null,
+          points: Number(t.paliers.points) > 0 ? Number(t.paliers.points) : null,
+          astra: Number(t.paliers.astra) > 0 ? Number(t.paliers.astra) : null,
+          seeds: Number(t.paliers.seeds) > 0 ? Number(t.paliers.seeds) : null
+        } : null
       };
     }
     saveConfig({
@@ -108,6 +117,18 @@ export async function POST({ request }) {
       sonarrUrl,
       sonarrApiKey,
       trackers,
+      statsPaliers: body.statsPaliers ? {
+        mode: body.statsPaliers.mode === 'tracker' ? 'tracker' : 'global',
+        global: {
+          ratio: Number(body.statsPaliers.global?.ratio) > 0 ? Number(body.statsPaliers.global.ratio) : 4.0,
+          uploadGB: Number(body.statsPaliers.global?.uploadGB) > 0 ? Number(body.statsPaliers.global.uploadGB) : 2048,
+          downloadGB: Number(body.statsPaliers.global?.downloadGB) > 0 ? Number(body.statsPaliers.global.downloadGB) : 2048,
+          bufferGB: Number(body.statsPaliers.global?.bufferGB) > 0 ? Number(body.statsPaliers.global.bufferGB) : 1024,
+          points: Number(body.statsPaliers.global?.points) > 0 ? Number(body.statsPaliers.global.points) : 25000,
+          astra: Number(body.statsPaliers.global?.astra) > 0 ? Number(body.statsPaliers.global.astra) : 1000,
+          seeds: Number(body.statsPaliers.global?.seeds) > 0 ? Number(body.statsPaliers.global.seeds) : 150
+        }
+      } : undefined,
       apiRatioUrl: String(body.apiRatioUrl ?? '').trim().replace(/\/+$/, ''),
       telemetryEnabled: body.telemetryEnabled !== false
     });

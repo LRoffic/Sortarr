@@ -181,6 +181,22 @@ export const settingsSchema = yup.object({
   instanceId: yup.string().trim().nullable().optional(),
   instance_id: yup.string().trim().nullable().optional(),
   telemetryEnabled: yup.boolean().default(true),
+  statsPaliers: yup
+    .object({
+      mode: yup.string().oneOf(['global', 'tracker']).default('global'),
+      global: yup
+        .object({
+          ratio: yup.number().min(0.1).max(100).nullable().optional(),
+          uploadGB: yup.number().min(1).max(1000000).nullable().optional(),
+          downloadGB: yup.number().min(1).max(1000000).nullable().optional(),
+          bufferGB: yup.number().min(1).max(1000000).nullable().optional(),
+          points: yup.number().min(0).max(100000000).nullable().optional(),
+          astra: yup.number().min(0).max(100000000).nullable().optional(),
+          seeds: yup.number().min(0).max(100000).nullable().optional()
+        })
+        .optional()
+    })
+    .optional(),
   trackers: yup.object().optional(),
   skipTest: yup.boolean().optional()
 });
