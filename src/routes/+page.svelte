@@ -4,6 +4,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { sortIndexers } from '$lib/sorting.js';
   import { getTrackerLogo, getTrackerInitials } from '$lib/logos.js';
+  import { scrollAnimate } from '$lib/animate.js';
 
   let { data } = $props();
   let failedLogos = $state({});
@@ -293,7 +294,7 @@
 
   <!-- Récapitulatif global des Points / Tokens / Karma / Zen / Crédits & Seeds -->
   {#if trackersWithPoints.length > 0}
-    <div class="rounded-xl p-3.5 mb-5" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+    <div use:scrollAnimate class="stat-scroll-trigger rounded-xl p-3.5 mb-5" style="background: var(--bg-secondary); border: 1px solid var(--border);">
       <div class="flex items-center justify-between mb-2.5 flex-wrap gap-2">
         <span class="text-xs font-semibold uppercase tracking-wider" style="color: #a78bfa;">
           🪙 Points, Jetons, Karma, Crédits &amp; Seeds des Trackers Privés
@@ -383,8 +384,9 @@
   >
     {#each indexers as indexer, i (indexer.id)}
       {@const logoUrl = getTrackerLogo(indexer)}
-      <div animate:flip={{ duration: 200 }}
-           class="rounded-xl p-4 border transition-all hover:border-purple-500/50"
+      <div use:scrollAnimate
+           animate:flip={{ duration: 200 }}
+           class="stat-scroll-trigger rounded-xl p-4 border transition-all hover:border-purple-500/50"
            style="background: var(--bg-card); border-color: var(--border);">
         <div class="flex items-center gap-4">
           <!-- Priority badge + drag handle + Tracker Logo -->

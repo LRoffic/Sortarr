@@ -1,11 +1,10 @@
 /**
- * Action Svelte : déclenche des animations fluides lorsque l'élément entre dans l'écran
+ * Action Svelte : déclenche les animations au scroll dès que l'élément entre dans la zone visible
  */
-export function animateOnVisible(node, options = {}) {
-  const { className = 'is-visible', threshold = 0.1, delay = 0 } = options;
+export function scrollAnimate(node, options = {}) {
+  const { className = 'in-view', threshold = 0.12, once = false } = options;
 
-  let timer = null;
-  if (typeof IntersectionObserver === 'undefined') {
+  if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') {
     node.classList.add(className);
     return;
   }
@@ -14,14 +13,12 @@ export function animateOnVisible(node, options = {}) {
     (entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
-          if (delay > 0) {
-            timer = setTimeout(() => {
-              node.classList.add(className);
-            }, delay);
-          } else {
-            node.classList.add(className);
+          node.classList.add(className);
+          if (once) {
+            observer.unobserve(node);
           }
-          observer.unobserve(node);
+        } else if (!once) {
+          node.classList.remove(className);
         }
       });
     },
@@ -32,8 +29,9 @@ export function animateOnVisible(node, options = {}) {
 
   return {
     destroy() {
-      if (timer) clearTimeout(timer);
       observer.disconnect();
     }
   };
 }
+
+export const animateOnVisible = scrollAnimate;

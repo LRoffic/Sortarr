@@ -1,6 +1,7 @@
 <script>
   import { untrack } from 'svelte';
   import { getTrackerLogo, getTrackerInitials } from '$lib/logos.js';
+  import { scrollAnimate } from '$lib/animate.js';
 
   let { data } = $props();
 
@@ -260,7 +261,8 @@
   <!-- Bandeau récapitulatif des Points / Jetons / Karma / Zen / Crédits & Seeds -->
   {#if trackersWithPointsOrSeeds.length > 0}
     <div
-      class="rounded-2xl p-4 space-y-3"
+      use:scrollAnimate
+      class="stat-scroll-trigger rounded-2xl p-4 space-y-3"
       style="background: linear-gradient(135deg, #1e1b4b55 0%, var(--bg-card) 100%); border: 1px solid #4c1d9588;"
     >
       <div class="flex flex-wrap items-center justify-between gap-2">
@@ -504,7 +506,8 @@
         {@const chart = buildChartPoints(tr.historyAsc, activeMetric, ptsLabel)}
         {@const rowsDesc = tr.historyDesc.slice(0, periodDays)}
         <div
-          class="rounded-2xl p-5 space-y-4"
+          use:scrollAnimate
+          class="stat-scroll-trigger rounded-2xl p-5 space-y-4"
           style="background: var(--bg-card); border: 1px solid var(--border);"
         >
           <!-- En-tête du tracker -->
@@ -761,7 +764,8 @@
           <!-- Courbe SVG d'évolution (Ratio, Karma, Astra ou Points selon le sélecteur du tracker) -->
           {#if chart.points.length > 0}
             <div
-              class="rounded-xl p-3"
+              use:scrollAnimate
+              class="stat-scroll-trigger rounded-xl p-3"
               style="background: var(--bg-secondary); border: 1px solid var(--border);"
             >
               <div class="flex items-center justify-between text-xs mb-1.5">
@@ -788,7 +792,7 @@
                   </linearGradient>
                 </defs>
 
-                <!-- Barres verticales de statistiques animées sous chaque point -->
+                <!-- Barres verticales de statistiques animées sous chaque point qui s'élèvent du bas vers le haut -->
                 {#each chart.points as pt, idx}
                   {@const barW = Math.max(3, Math.min(8, Math.floor(400 / chart.points.length)))}
                   {@const barH = Math.max(3, 94 - pt.y)}
@@ -803,7 +807,7 @@
                     stroke={activeMetric === 'astra' ? '#c084fc' : chart.isPoints ? '#facc15' : '#8b5cf6'}
                     stroke-opacity="0.35"
                     stroke-width="1"
-                    style="animation-delay: {idx * 25}ms;"
+                    style="transform-origin: {pt.x}px 94px; animation-delay: {idx * 30}ms;"
                   >
                     <title>{pt.date} : {chart.isPoints ? fmtPoints(pt.val) : pt.val}</title>
                   </rect>
@@ -824,7 +828,7 @@
                   />
                 {/if}
                 {#each chart.points as pt, idx}
-                  <g class="stat-point-animated" style="animation-delay: {idx * 25 + 150}ms;">
+                  <g class="stat-point-animated" style="animation-delay: {idx * 30 + 120}ms;">
                     <circle
                       cx={pt.x}
                       cy={pt.y}
@@ -837,6 +841,8 @@
                     </circle>
                     {#if chart.points.length <= 14}
                       <text
+                        class="stat-point-animated"
+                        style="animation-delay: {idx * 30 + 150}ms;"
                         x={pt.x}
                         y={pt.y - 8}
                         text-anchor="middle"
