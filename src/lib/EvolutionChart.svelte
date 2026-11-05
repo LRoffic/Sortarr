@@ -167,9 +167,9 @@
           stroke={activeMetric === 'astra' ? '#c084fc' : chart.isPoints ? '#facc15' : '#8b5cf6'}
           stroke-opacity="0.35"
           stroke-width="1"
-        >
-          <title>{pt.date} : {chart.isPoints ? fmtPoints(pt.val) : pt.val}</title>
-        </rect>
+          class="cursor-pointer"
+          data-tooltip="{pt.date} : {chart.isPoints ? fmtPoints(pt.val) : pt.val}"
+        />
       {/if}
     {/each}
 
@@ -200,9 +200,9 @@
           fill={activeMetric === 'astra' ? '#c084fc' : chart.isPoints ? '#facc15' : '#4ade80'}
           stroke="#0f172a"
           stroke-width="1.5"
-        >
-          <title>{pt.date} : {chart.isPoints ? fmtPoints(pt.val) : pt.val}</title>
-        </circle>
+          class="cursor-pointer"
+          data-tooltip="{pt.date} : {chart.isPoints ? fmtPoints(pt.val) : pt.val}"
+        />
 
         {#if animatedPoints.length <= 14}
           <text

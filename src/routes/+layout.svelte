@@ -2,6 +2,7 @@
   import '../app.css';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
+  import Tooltip from '$lib/Tooltip.svelte';
 
   let { data, children } = $props();
   let updateInfo = $state(null);
@@ -85,4 +86,6 @@
   <footer class="text-center py-4 text-xs" style="color: var(--text-muted);">
     Sortarr v{data?.currentVersion || '1.0.0'} • <a href="https://github.com/LRoffic/Sortarr/releases" target="_blank" class="underline hover:text-purple-400">GitHub Releases</a> • Données actualisées manuellement ou toutes les 20 min
   </footer>
+
+  <Tooltip />
 </div>
