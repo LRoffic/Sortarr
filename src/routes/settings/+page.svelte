@@ -111,7 +111,22 @@
   let hasMounted = false;
   let autoSaveTimer = null;
 
-  // Positionnement de l'index à gauche lors du scroll
+  // Sections de configuration pour l'index et navigation rapide
+  const SETTINGS_SECTIONS = [
+    { id: 'prowlarr', label: 'Prowlarr', icon: '🌐' },
+    { id: 'autosort', label: 'Tri & Cycle', icon: '⚡' },
+    { id: 'tagging', label: 'Marquage Arr', icon: '🏷️' },
+    { id: 'paliers', label: 'Paliers stats', icon: '🎯' },
+    { id: 'apiratio', label: 'api-ratio', icon: '📡' },
+    { id: 'trackers', label: 'Trackers', icon: '📊' },
+    { id: 'security', label: 'Sécurité & 2FA', icon: '🔐' },
+    { id: 'update', label: 'Mises à jour', icon: '🔄' },
+    { id: 'telemetry', label: 'Télémétrie', icon: '🛰️' },
+    { id: 'contributors', label: 'Contributeurs', icon: '👥' }
+  ];
+  let activeSection = $state('prowlarr');
+
+  // Positionnement de l'index et état de défilement
   let isScrolled = $state(false);
   let mobileMenuOpen = $state(false);
 
@@ -124,6 +139,15 @@
 
     const onScroll = () => {
       isScrolled = window.scrollY > 120;
+      const scrollPos = window.scrollY + 160;
+      for (let i = SETTINGS_SECTIONS.length - 1; i >= 0; i--) {
+        const sec = SETTINGS_SECTIONS[i];
+        const el = document.getElementById(sec.id);
+        if (el && el.offsetTop <= scrollPos) {
+          activeSection = sec.id;
+          break;
+        }
+      }
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
@@ -171,6 +195,7 @@
 
   function scrollToSection(e, targetId) {
     if (e) e.preventDefault();
+    activeSection = targetId;
     const el = document.getElementById(targetId);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -612,6 +637,11 @@
   let debugHistory = $state([]);
   let maskSecrets = $state(true);
 
+  // Filtrer les indexeurs non-publics pour les paliers par tracker (exclut les trackers publics)
+  let privateIndexers = $derived(
+    (data.indexers ?? []).filter((idx) => idx.privacy !== 'public' && trackers[idx.id]?.type !== 'public')
+  );
+
   function maskValue(str) {
     if (!maskSecrets || !str) return str;
     return String(str)
@@ -827,87 +857,26 @@
 
       <!-- Navigation : liste verticale sur desktop (lg:), grille sur petits écrans -->
       <nav class="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-col gap-1 text-xs">
-        <a
-          href="#prowlarr"
-          onclick={(e) => scrollToSection(e, 'prowlarr')}
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-        >
-          <span>🌐</span> <span class="truncate">Prowlarr</span>
-        </a>
-        <a
-          href="#autosort"
-          onclick={(e) => scrollToSection(e, 'autosort')}
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-        >
-          <span>⚡</span> <span class="truncate">Tri & Cycle</span>
-        </a>
-        <a
-          href="#tagging"
-          onclick={(e) => scrollToSection(e, 'tagging')}
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-        >
-          <span>🏷️</span> <span class="truncate">Marquage Arr</span>
-        </a>
-        <a
-          href="#paliers"
-          onclick={(e) => scrollToSection(e, 'paliers')}
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800 font-medium"
-          style="background: #7c3aed15; border-color: #7c3aed55; color: #c4b5fd;"
-        >
-          <span>🎯</span> <span class="truncate">Paliers stats</span>
-        </a>
-        <a
-          href="#apiratio"
-          onclick={(e) => scrollToSection(e, 'apiratio')}
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-        >
-          <span>📡</span> <span class="truncate">api-ratio</span>
-        </a>
-        <a
-          href="#trackers"
-          onclick={(e) => scrollToSection(e, 'trackers')}
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-        >
-          <span>📊</span> <span class="truncate">Trackers</span>
-        </a>
-        <a
-          href="#security"
-          onclick={(e) => scrollToSection(e, 'security')}
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800 font-semibold"
-          style="background: #3b82f615; border-color: #3b82f655; color: #93c5fd;"
-          title="Sécurité : Mot de passe, 2FA & reCAPTCHA"
-        >
-          <span>🔐</span> <span class="truncate">Sécurité & 2FA</span>
-        </a>
-        <a
-          href="#update"
-          onclick={(e) => scrollToSection(e, 'update')}
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-        >
-          <span>🔄</span> <span class="truncate">Mises à jour</span>
-        </a>
-        <a
-          href="#telemetry"
-          onclick={(e) => scrollToSection(e, 'telemetry')}
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-        >
-          <span>🛰️</span> <span class="truncate">Télémétrie</span>
-        </a>
-        <a
-          href="#contributors"
-          onclick={(e) => scrollToSection(e, 'contributors')}
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] hover:bg-slate-800"
-          style="background: var(--bg-card); border-color: var(--border); color: #e2e8f0;"
-        >
-          <span>👥</span> <span class="truncate">Contributeurs</span>
-        </a>
+        {#each SETTINGS_SECTIONS as sec}
+          {@const isActive = activeSection === sec.id}
+          <a
+            href="#{sec.id}"
+            onclick={(e) => scrollToSection(e, sec.id)}
+            class="flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-[1.02] text-xs {isActive ? 'border-purple-500 font-semibold shadow-md' : 'border-slate-800/80 hover:bg-slate-800'}"
+            style="{isActive ? 'background: #7c3aed30; border-color: #a855f7; color: #f3e8ff;' : 'background: var(--bg-card); border-color: var(--border); color: #cbd5e1;'}"
+          >
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span>{sec.icon}</span>
+              <span class="truncate">{sec.label}</span>
+            </div>
+            {#if isActive}
+              <span class="text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider shrink-0"
+                    style="background: #a855f733; color: #e9d5ff; border: 1px solid #c084fc99;">
+                actif
+              </span>
+            {/if}
+          </a>
+        {/each}
       </nav>
     </aside>
 
@@ -932,16 +901,25 @@
             <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider pb-1 border-b border-slate-700/50 mb-1">
               Index de configuration
             </div>
-            <a href="#prowlarr" onclick={(e) => { scrollToSection(e, 'prowlarr'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">🌐 Prowlarr</a>
-            <a href="#autosort" onclick={(e) => { scrollToSection(e, 'autosort'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">⚡ Tri & Cycle</a>
-            <a href="#tagging" onclick={(e) => { scrollToSection(e, 'tagging'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">🏷️ Marquage Arr</a>
-            <a href="#paliers" onclick={(e) => { scrollToSection(e, 'paliers'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-purple-300 font-medium">🎯 Paliers stats</a>
-            <a href="#apiratio" onclick={(e) => { scrollToSection(e, 'apiratio'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">📡 api-ratio</a>
-            <a href="#trackers" onclick={(e) => { scrollToSection(e, 'trackers'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">📊 Trackers</a>
-            <a href="#security" onclick={(e) => { scrollToSection(e, 'security'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-blue-300 font-medium">🔐 Sécurité & 2FA</a>
-            <a href="#update" onclick={(e) => { scrollToSection(e, 'update'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">🔄 Mises à jour</a>
-            <a href="#telemetry" onclick={(e) => { scrollToSection(e, 'telemetry'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">🛰️ Télémétrie</a>
-            <a href="#contributors" onclick={(e) => { scrollToSection(e, 'contributors'); mobileMenuOpen = false; }} class="px-2 py-1 rounded hover:bg-slate-800 text-slate-200">👥 Contributeurs</a>
+            {#each SETTINGS_SECTIONS as sec}
+              {@const isActive = activeSection === sec.id}
+              <a
+                href="#{sec.id}"
+                onclick={(e) => { scrollToSection(e, sec.id); mobileMenuOpen = false; }}
+                class="flex items-center justify-between gap-2 p-1.5 rounded text-xs transition-colors {isActive ? 'bg-purple-900/40 text-purple-200 font-semibold' : 'hover:bg-slate-800 text-slate-200'}"
+              >
+                <div class="flex items-center gap-2 min-w-0">
+                  <span>{sec.icon}</span>
+                  <span class="truncate">{sec.label}</span>
+                </div>
+                {#if isActive}
+                  <span class="text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider shrink-0"
+                        style="background: #a855f733; color: #e9d5ff; border: 1px solid #c084fc99;">
+                    actif
+                  </span>
+                {/if}
+              </a>
+            {/each}
           </div>
         {/if}
       </div>
@@ -1593,26 +1571,26 @@
       {/if}
 
       {#if statsPaliers.mode === 'tracker'}
-        <!-- Liste des paliers individuels par tracker -->
+        <!-- Liste des paliers individuels par tracker (exclut les trackers publics) -->
         <div class="p-3 rounded-lg space-y-3" style="background: var(--bg-card); border: 1px solid var(--border);">
           <div class="flex items-center justify-between flex-wrap gap-2">
             <div>
               <div class="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                <span>📊</span> Objectifs personnalisés par tracker ({data.indexers?.length ?? 0})
+                <span>📊</span> Objectifs personnalisés par tracker ({privateIndexers.length})
               </div>
               <div class="text-[11px]" style="color: var(--text-muted);">
-                Renseignez les paliers d'objectifs pour chaque tracker.
+                Renseignez les paliers d'objectifs pour chaque tracker. Seuls les trackers privés et semi-privés sont affichés.
               </div>
             </div>
           </div>
 
-          {#if !data.indexers?.length}
+          {#if !privateIndexers.length}
             <div class="p-4 rounded-lg text-center text-xs" style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-muted);">
-              ⚠️ Aucun indexeur détecté. Configurez d'abord la clé API Prowlarr pour lister vos trackers.
+              ⚠️ Aucun indexeur privé détecté. Configurez d'abord la clé API Prowlarr pour lister vos trackers.
             </div>
           {:else}
             <div class="space-y-3">
-              {#each data.indexers as idx (idx.id)}
+              {#each privateIndexers as idx (idx.id)}
                 {@const t = trackers[idx.id]}
                 {@const logoUrl = getTrackerLogo(idx)}
                 {@const isCustom = t?.paliers && Object.values(t.paliers).some(v => v !== '' && v !== null && v !== undefined)}
@@ -1635,17 +1613,16 @@
                       {/if}
                     </div>
 
-                    {#if isCustom}
-                      <button
-                        type="button"
-                        onclick={() => {
-                          if (t) t.paliers = { ratio: '', uploadGB: '', downloadGB: '', bufferGB: '', points: '', astra: '', seeds: '' };
-                        }}
-                        class="text-[11px] text-purple-400 hover:text-purple-300 underline cursor-pointer"
-                      >
-                        Réinitialiser
-                      </button>
-                    {/if}
+                    <button
+                      type="button"
+                      onclick={() => {
+                        if (t) t.paliers = { ratio: '', uploadGB: '', downloadGB: '', bufferGB: '', points: '', astra: '', seeds: '' };
+                      }}
+                      class="text-[11px] px-2.5 py-1 rounded-md border font-medium transition-all cursor-pointer flex items-center gap-1.5 {isCustom ? 'text-purple-300 border-purple-500/50 bg-purple-950/40 hover:bg-purple-900/60' : 'text-slate-400 border-slate-700/80 bg-slate-800/40 hover:text-slate-200 hover:bg-slate-800'}"
+                      title="Rétablir les paliers par défaut pour {idx.name} uniquement"
+                    >
+                      <span>↺</span> <span>Rétablir par défaut</span>
+                    </button>
                   </div>
 
                   {#if t}
@@ -2143,17 +2120,16 @@
                       <span class="text-[11px] font-semibold flex items-center gap-1.5" style="color: #c4b5fd;">
                         🎯 Paliers d'objectifs pour {idx.name}
                       </span>
-                      {#if t.paliers && Object.values(t.paliers).some(v => v !== '' && v !== null && v !== undefined)}
-                        <button
-                          type="button"
-                          onclick={() => {
-                            t.paliers = { ratio: '', uploadGB: '', downloadGB: '', bufferGB: '', points: '', astra: '', seeds: '' };
-                          }}
-                          class="text-[10px] text-purple-400 hover:text-purple-300 underline cursor-pointer"
-                        >
-                          Réinitialiser
-                        </button>
-                      {/if}
+                      <button
+                        type="button"
+                        onclick={() => {
+                          t.paliers = { ratio: '', uploadGB: '', downloadGB: '', bufferGB: '', points: '', astra: '', seeds: '' };
+                        }}
+                        class="text-[10px] px-2 py-0.5 rounded border font-medium transition-all cursor-pointer flex items-center gap-1 {t.paliers && Object.values(t.paliers).some(v => v !== '' && v !== null && v !== undefined) ? 'text-purple-300 border-purple-500/50 bg-purple-950/40 hover:bg-purple-900/60' : 'text-slate-400 border-slate-700/80 bg-slate-800/40 hover:text-slate-200 hover:bg-slate-800'}"
+                        title="Rétablir les paliers par défaut pour {idx.name} uniquement"
+                      >
+                        <span>↺</span> <span>Rétablir par défaut</span>
+                      </button>
                     </div>
 
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
