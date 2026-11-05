@@ -23,8 +23,9 @@
 </script>
 
 <div class="min-h-screen flex flex-col" style="background: var(--bg-primary);">
-  <!-- Navbar -->
-  <nav class="border-b" style="background: var(--bg-secondary); border-color: var(--border);">
+  <!-- Navbar fixe en haut de page -->
+  <nav class="sticky top-0 z-40 border-b shadow-md transition-shadow"
+       style="background: #1a1a24f0; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-color: var(--border);">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between flex-wrap gap-2">
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm" 
