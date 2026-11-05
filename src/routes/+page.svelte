@@ -362,7 +362,10 @@
               {/if}
 
               <!-- Petite barre animée de progression des points -->
-              <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+              <div
+                class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
+                title={`${idx.tracker.pointsLabel || 'POINTS'} : ${formatPoints(idx.tracker.points)} / 25 000 (${Math.min(100, Math.round(((idx.tracker.points ?? 0) / 25000) * 100))}% du palier)`}
+              >
                 <div
                   class="h-full rounded-full stat-bar-grow-x"
                   style="width: {Math.min(100, Math.max(12, ((idx.tracker.points ?? 0) / 25000) * 100))}%; background: #facc15;"
@@ -499,7 +502,10 @@
                     {formatRatio(indexer.tracker)}
                   </div>
                 </div>
-                <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                <div
+                  class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
+                  title={indexer.tracker.infinite ? 'Ratio : ∞ (Illimité)' : `Ratio : ${(indexer.tracker.ratio ?? 0).toFixed(2)} / 4.0 (${Math.min(100, Math.round(((indexer.tracker.ratio ?? 0) / 4) * 100))}% de l\'objectif)`}
+                >
                   <div class="h-full rounded-full stat-bar-grow-x" style="width: {indexer.tracker.infinite ? 100 : Math.min(100, Math.max(12, ((indexer.tracker.ratio ?? 0) / 4) * 100))}%; background: {getRatioColor(indexer.tracker)};"></div>
                 </div>
               </div>
@@ -508,7 +514,10 @@
                   <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">UPLOAD</div>
                   <div class="font-semibold" style="color: #4ade80;">{formatBytes(indexer.tracker.uploaded)}</div>
                 </div>
-                <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                <div
+                  class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
+                  title={`Upload : ${formatBytes(indexer.tracker.uploaded)} / 2 To (${Math.min(100, Math.round(((indexer.tracker.uploaded ?? 0) / (2 * 1024 ** 4)) * 100))}% du palier)`}
+                >
                   <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.uploaded ?? 0) / (2 * 1024 ** 4)) * 100))}%; background: #4ade80;"></div>
                 </div>
               </div>
@@ -517,7 +526,10 @@
                   <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-muted);">DOWNLOAD</div>
                   <div class="font-semibold">{formatBytes(indexer.tracker.downloaded)}</div>
                 </div>
-                <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                <div
+                  class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
+                  title={`Download : ${formatBytes(indexer.tracker.downloaded)} / 2 To (${Math.min(100, Math.round(((indexer.tracker.downloaded ?? 0) / (2 * 1024 ** 4)) * 100))}% du palier)`}
+                >
                   <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.downloaded ?? 0) / (2 * 1024 ** 4)) * 100))}%; background: #94a3b8;"></div>
                 </div>
               </div>
@@ -528,7 +540,10 @@
                     {indexer.tracker.infinite && indexer.tracker.buffer === null ? '∞' : formatBytes(indexer.tracker.buffer)}
                   </div>
                 </div>
-                <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                <div
+                  class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
+                  title={indexer.tracker.infinite && indexer.tracker.buffer === null ? 'Buffer : ∞ (Illimité)' : `Buffer : ${formatBytes(indexer.tracker.buffer)} / 1 To (${Math.min(100, Math.round((Math.abs(indexer.tracker.buffer ?? 0) / (1024 ** 4)) * 100))}% du palier)`}
+                >
                   <div class="h-full rounded-full stat-bar-grow-x" style="width: {indexer.tracker.infinite ? 100 : Math.min(100, Math.max(12, (Math.abs(indexer.tracker.buffer ?? 0) / (1024 ** 4)) * 100))}%; background: {indexer.tracker.buffer < 0 ? '#ef4444' : '#4ade80'};"></div>
                 </div>
               </div>
@@ -546,7 +561,10 @@
                     </div>
                   {/if}
                 </div>
-                <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                <div
+                  class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
+                  title={`${indexer.tracker.pointsLabel || 'POINTS'} : ${formatPoints(indexer.tracker.points)} / 25 000 (${Math.min(100, Math.round(((indexer.tracker.points ?? 0) / 25000) * 100))}% du palier)`}
+                >
                   <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.points ?? 0) / 25000) * 100))}%; background: #facc15;"></div>
                 </div>
               </div>
@@ -562,7 +580,10 @@
                     </div>
                   {/if}
                 </div>
-                <div class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden">
+                <div
+                  class="h-1 w-full bg-slate-800 rounded-full mt-1.5 overflow-hidden cursor-help"
+                  title={`Seeds : ${indexer.tracker.seeding ?? 0} / 150 (${Math.min(100, Math.round(((indexer.tracker.seeding ?? 0) / 150) * 100))}% de l\'objectif)`}
+                >
                   <div class="h-full rounded-full stat-bar-grow-x" style="width: {Math.min(100, Math.max(12, ((indexer.tracker.seeding ?? 0) / 150) * 100))}%; background: #4ade80;"></div>
                 </div>
               </div>
