@@ -39,6 +39,26 @@ export async function POST({ request }) {
   try {
     const trackers = {};
     for (const [id, t] of Object.entries(body.trackers ?? {})) {
+      let finalApiKey = String(t.apiKey ?? '').trim();
+      const crazyUid = String(t.crazyUid ?? '').replace(/^uid=/i, '').trim();
+      const crazyPass = String(t.crazyPass ?? '').replace(/^pass=/i, '').trim();
+      const yggCfClearance = String(t.yggCfClearance ?? '').replace(/^cf_clearance=/i, '').trim();
+
+      if (t.type === 'crazyspirits' && crazyUid && crazyPass) {
+        finalApiKey = `uid=${crazyUid}; pass=${crazyPass}`;
+      } else if (t.type === 'yggreborn') {
+        if (finalApiKey && !finalApiKey.includes('__ygg_sess=') && !finalApiKey.includes('http')) {
+          finalApiKey = `__ygg_sess=${finalApiKey}`;
+        }
+        if (yggCfClearance && !finalApiKey.includes('cf_clearance=')) {
+          finalApiKey = `${finalApiKey}; cf_clearance=${yggCfClearance}`;
+        }
+      } else if (t.type === 'nostradamus') {
+        if (finalApiKey && !finalApiKey.includes('_nostradamus_key=')) {
+          finalApiKey = `_nostradamus_key=${finalApiKey}`;
+        }
+      }
+
       trackers[id] = {
         enabled: t.enabled === true,
         type: [
@@ -56,7 +76,10 @@ export async function POST({ request }) {
         pathPoints: String(t.pathPoints ?? '').trim(),
         pathFl: String(t.pathFl ?? '').trim(),
         baseUrl: String(t.baseUrl ?? '').trim().replace(/\/+$/, ''),
-        apiKey: String(t.apiKey ?? '').trim(),
+        apiKey: finalApiKey,
+        crazyUid,
+        crazyPass,
+        yggCfClearance,
         freeleech: ['on', 'off'].includes(t.freeleech) ? t.freeleech : 'auto',
         manualUpGB: t.manualUpGB ?? '',
         manualDownGB: t.manualDownGB ?? ''

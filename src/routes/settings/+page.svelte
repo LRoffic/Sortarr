@@ -360,6 +360,7 @@
   // Config par tracker (clé = id indexeur Prowlarr)
   const emptyTracker = () => ({
     enabled: false, type: 'unit3d', baseUrl: '', apiKey: '',
+    crazyUid: '', crazyPass: '', yggCfClearance: '',
     freeleech: 'auto', manualUpGB: '', manualDownGB: '', manualSeeds: '',
     authMode: 'bearer', apiRatioKey: '', pathUp: '', pathDown: '', pathRatio: '', pathPoints: '', pathFl: ''
   });
@@ -384,11 +385,29 @@
       const t = {};
       for (const idx of data.indexers ?? []) {
         const saved = data.config.trackers?.[idx.id];
+        let crazyUid = saved?.crazyUid ?? '';
+        let crazyPass = saved?.crazyPass ?? '';
+        let yggCfClearance = saved?.yggCfClearance ?? '';
+        if (saved?.apiKey) {
+          if (!crazyUid || !crazyPass) {
+            const uidM = saved.apiKey.match(/(?:^|;\s*)uid=([^;]+)/i);
+            const passM = saved.apiKey.match(/(?:^|;\s*)pass=([^;]+)/i);
+            if (uidM && !crazyUid) crazyUid = uidM[1].trim();
+            if (passM && !crazyPass) crazyPass = passM[1].trim();
+          }
+          if (!yggCfClearance) {
+            const cfM = saved.apiKey.match(/(?:^|;\s*)cf_clearance=([^;]+)/i);
+            if (cfM) yggCfClearance = cfM[1].trim();
+          }
+        }
         t[idx.id] = {
           ...emptyTracker(),
           type: guessTypeByName(idx.name, idx.privacy),
           ...(idx.privacy === 'public' && !saved ? { enabled: true, type: 'public' } : {}),
-          ...(saved ?? {})
+          ...(saved ?? {}),
+          crazyUid,
+          crazyPass,
+          yggCfClearance
         };
       }
       return t;
@@ -539,8 +558,16 @@
         })
       });
       saveResult = await res.json();
+      if (saveResult.ok) {
+        autoSaveStatus = 'saved';
+        setTimeout(() => {
+          if (autoSaveStatus === 'saved') autoSaveStatus = 'idle';
+        }, 3000);
+      }
     } catch (e) {
       saveResult = { ok: false, error: e.message };
+      autoSaveStatus = 'error';
+      autoSaveError = e.message;
     } finally {
       isSaving = false;
     }
@@ -1313,21 +1340,46 @@
                          placeholder="Clé dans /ratios (vide = auto : tr4ker, c411, gemini, crazyspirits, nostradamus…)"
                          class="px-2 py-1.5 rounded font-mono col-span-2"
                          style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
-                {:else if ['unit3d', 'tr4ker', 'draupnirr', 'astra', 'speedapp', 'teamflix', 'c411', 'v3x', 'crazyspirits', 'nostradamus', 'yggreborn', 'custom'].includes(t.type)}
+                {:else if t.type === 'crazyspirits'}
+                  <input type="text" bind:value={t.crazyUid}
+                         oninput={() => { t.apiKey = `uid=${(t.crazyUid || '').replace(/^uid=/i, '').trim()}; pass=${(t.crazyPass || '').replace(/^pass=/i, '').trim()}`; }}
+                         placeholder="UID (ex: 12345)"
+                         class="px-2 py-1.5 rounded font-mono" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
+                  <input type="text" bind:value={t.crazyPass}
+                         oninput={() => { t.apiKey = `uid=${(t.crazyUid || '').replace(/^uid=/i, '').trim()}; pass=${(t.crazyPass || '').replace(/^pass=/i, '').trim()}`; }}
+                         placeholder="Pass / Hash (ex: a1b2c3d4e5...)"
+                         class="px-2 py-1.5 rounded font-mono" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
+                  <input type="text" bind:value={t.baseUrl}
+                         placeholder="URL du tracker (optionnel / vide = https://crazyspirits.com)"
+                         class="px-2 py-1.5 rounded col-span-2 text-[11px]" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #94a3b8;" />
+                {:else if t.type === 'yggreborn'}
+                  <input type="text" bind:value={t.apiKey}
+                         placeholder="Token session (valeur directe ou __ygg_sess=...)"
+                         class="px-2 py-1.5 rounded font-mono" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
+                  <input type="text" bind:value={t.yggCfClearance}
+                         placeholder="cf_clearance (optionnel si Cloudflare)"
+                         class="px-2 py-1.5 rounded font-mono" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
+                  <input type="text" bind:value={t.baseUrl}
+                         placeholder="URL exporter /metrics ou URL du tracker (optionnel / vide = défaut)"
+                         class="px-2 py-1.5 rounded col-span-2 text-[11px]" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #94a3b8;" />
+                {:else if t.type === 'nostradamus'}
+                  <input type="text" bind:value={t.baseUrl}
+                         placeholder="URL du tracker (vide = défaut https://nostradamus.ovh)"
+                         class="px-2 py-1.5 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
+                  <input type="text" bind:value={t.apiKey}
+                         placeholder="Cookie / Clé (valeur directe ou _nostradamus_key=...)"
+                         class="px-2 py-1.5 rounded font-mono" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
+                {:else if ['unit3d', 'tr4ker', 'draupnirr', 'astra', 'speedapp', 'teamflix', 'c411', 'v3x', 'custom'].includes(t.type)}
                   <input type="text" bind:value={t.baseUrl}
                          placeholder={
                            t.type === 'custom' ? 'URL complète de l\u2019endpoint profil (JSON)'
-                           : t.type === 'yggreborn' ? 'URL exporter /metrics ou URL du tracker (optionnel)'
                            : t.type === 'v3x' ? 'Optionnel (défaut : https://api.v3x.club/api/me)'
                            : 'URL du tracker (vide = défaut / celle de Prowlarr)'
                          }
                          class="px-2 py-1.5 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;" />
                   <input type="text" bind:value={t.apiKey}
                          placeholder={
-                           t.type === 'crazyspirits' ? 'Cookie : uid=...; pass=...'
-                           : t.type === 'nostradamus' ? 'Cookie : _nostradamus_key=...'
-                           : t.type === 'yggreborn' ? 'Cookie : __ygg_sess=...; cf_clearance=... (ou vide si exporter)'
-                           : t.type === 'v3x' ? 'Clé API V3X (« Mon profil » ou Torznab)'
+                           t.type === 'v3x' ? 'Clé API V3X (« Mon profil » ou Torznab)'
                            : t.type === 'speedapp' ? 'Token API (speedapp.io/profile/api-tokens) ou email:motdepasse'
                            : t.type === 'teamflix' ? 'Clé API TeamFlix (My Settings → API Key)'
                            : 'Clé API (vide = celle de Prowlarr)'
@@ -1765,3 +1817,24 @@
     </ul>
   </div>
 </div>
+
+<!-- Notification toast en bas à gauche lors de la sauvegarde -->
+{#if autoSaveStatus === 'saved'}
+  <div class="fixed bottom-6 left-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 pointer-events-none"
+       style="background: #0f172aee; backdrop-filter: blur(12px); border: 1px solid #22c55e77; color: #4ade80; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+    <span class="text-xl">💾</span>
+    <div>
+      <div class="text-xs font-bold text-white">Paramètres sauvegardés</div>
+      <div class="text-[11px] text-gray-300">Vos modifications ont été enregistrées avec succès.</div>
+    </div>
+  </div>
+{:else if autoSaveStatus === 'error'}
+  <div class="fixed bottom-6 left-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 pointer-events-none"
+       style="background: #0f172aee; backdrop-filter: blur(12px); border: 1px solid #ef444477; color: #f87171; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+    <span class="text-xl">⚠️</span>
+    <div>
+      <div class="text-xs font-bold text-white">Erreur de sauvegarde</div>
+      <div class="text-[11px] text-gray-300">{autoSaveError || 'Impossible de sauvegarder la configuration.'}</div>
+    </div>
+  </div>
+{/if}

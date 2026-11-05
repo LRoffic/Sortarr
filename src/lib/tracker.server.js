@@ -628,10 +628,22 @@ export async function fetchSpeedAppStats(baseUrl, apiKey) {
  * Attend le cookie "uid=...; pass=..." dans apiKey, ou bascule sur api-ratio si configuré.
  */
 export async function fetchCrazySpiritsStats(indexer, cfg, apiKey, apiRatioUrl) {
-  const cookieStr = (apiKey || '').trim().replace(/^["']|["']$/g, '');
+  let cookieStr = (apiKey || '').trim().replace(/^["']|["']$/g, '');
+
+  const uidVal = String(cfg?.crazyUid || '').replace(/^uid=/i, '').trim();
+  const passVal = String(cfg?.crazyPass || '').replace(/^pass=/i, '').trim();
+  if (uidVal && passVal) {
+    cookieStr = `uid=${uidVal}; pass=${passVal}`;
+  } else if (!cookieStr.includes('uid=') && !cookieStr.includes('pass=') && cookieStr.includes(';')) {
+    const parts = cookieStr.split(';').map((s) => s.trim());
+    if (parts.length >= 2) {
+      cookieStr = `uid=${parts[0]}; pass=${parts[1]}`;
+    }
+  }
+
   if (!cookieStr.includes('uid=') || !cookieStr.includes('pass=')) {
     if (apiRatioUrl) return fetchApiRatioStats(indexer, { ...cfg, apiRatioKey: 'crazyspirits' }, apiRatioUrl);
-    throw new Error("Cookie 'uid=...; pass=...' requis dans le champ Clé/Cookie (ou configurez l'URL api-ratio)");
+    throw new Error("Identifiants UID et Pass requis pour Crazy Spirits (ou configurez l'URL api-ratio)");
   }
 
   const base = (!cfg.baseUrl || cfg.baseUrl.includes('feed.php') || cfg.baseUrl.includes('jackett'))
@@ -879,6 +891,11 @@ export async function fetchNostradamusStats(indexer, cfg, apiKey, apiRatioUrl) {
     .filter((c) => c && !c.startsWith('techaro.lol-anubis'))
     .join('; ');
 
+  // Si l'utilisateur n'a pas inclus "_nostradamus_key=", on l'ajoute automatiquement
+  if (raw && !raw.includes('_nostradamus_key=')) {
+    raw = `_nostradamus_key=${raw}`;
+  }
+
   const looksLikeCookie = raw.includes('_nostradamus_key=') || (raw.includes('=') && raw.includes(';'));
   if (!looksLikeCookie && apiRatioUrl) {
     return fetchApiRatioStats(indexer, { ...cfg, apiRatioKey: 'nostradamus' }, apiRatioUrl);
@@ -1049,9 +1066,13 @@ export async function fetchYggRebornStats(baseUrl, apiKey) {
       .replace(/(^|;\s*)_?_?ygg_sess[-=]/g, '$1__ygg_sess=')
       .replace(/(^|;\s*)cf_clearance[-=]/g, '$1cf_clearance=');
   }
+  // Si l'utilisateur a entré la valeur brute sans __ygg_sess=, on l'ajoute automatiquement
+  if (cookie && !cookie.includes('__ygg_sess=')) {
+    cookie = `__ygg_sess=${cookie}`;
+  }
   if (!cookie.includes('__ygg_sess=')) {
     throw new Error(
-      "L'API Torznab de YggReborn ne renvoie pas le profil : indiquez l'URL de yggreborn-exporter (ex. http://localhost:9090/metrics) dans URL, ou collez votre cookie '__ygg_sess=...; cf_clearance=...' dans le champ Clé/Cookie"
+      "Session YggReborn manquante : collez votre token de session dans le champ Clé/Session (ou configurez yggreborn-exporter)"
     );
   }
   const origin = (!baseUrl || baseUrl.includes('api.yggreborn'))
