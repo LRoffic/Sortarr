@@ -29,10 +29,7 @@
        style="background: #1a1a24f0; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-color: var(--border);">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between flex-wrap gap-2">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm" 
-             style="background: var(--accent); color: white;">
-          S
-        </div>
+        <img src="/favicon.jpg" alt="Sortarr" class="w-8 h-8 rounded-lg object-cover shadow-sm" />
         <span class="font-bold text-lg tracking-tight">Sortarr</span>
         <span class="text-[11px] font-mono px-2 py-0.5 rounded-full" style="background: #7c3aed22; color: #a78bfa;">
           v{data?.currentVersion || '1.0.0'}
