@@ -3,19 +3,9 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import Tooltip from '$lib/Tooltip.svelte';
-  import { formatDateTime } from '$lib/formatters.js';
 
   let { data, children } = $props();
   let updateInfo = $state(null);
-
-  let lastUpdateTooltip = $derived.by(() => {
-    const version = data?.currentVersion || '1.0.0';
-    const date = data?.lastUpdatedAt ? formatDateTime(data.lastUpdatedAt) : '';
-    if (date) {
-      return `Version v${version} — Dernière mise à jour : ${date}`;
-    }
-    return `Version v${version}`;
-  });
 
   onMount(async () => {
     if (!data?.user) return;
@@ -41,11 +31,7 @@
       <div class="flex items-center gap-3">
         <img src="/favicon.jpg" alt="Sortarr" class="w-8 h-8 rounded-lg object-cover shadow-sm" />
         <span class="font-bold text-lg tracking-tight">Sortarr</span>
-        <span
-          class="text-[11px] font-mono px-2 py-0.5 rounded-full cursor-help transition-opacity hover:opacity-85"
-          style="background: #7c3aed22; color: #a78bfa;"
-          data-tooltip={lastUpdateTooltip}
-        >
+        <span class="text-[11px] font-mono px-2 py-0.5 rounded-full" style="background: #7c3aed22; color: #a78bfa;">
           v{data?.currentVersion || '1.0.0'}
         </span>
         {#if updateInfo?.updateAvailable}
@@ -53,7 +39,7 @@
             href="/settings#update"
             class="text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-transform hover:scale-105"
             style="background: #22c55e22; color: #4ade80; border: 1px solid #22c55e66;"
-            data-tooltip={`Nouvelle version ${updateInfo.tagName} disponible${updateInfo.publishedAt ? ` (publiée le ${formatDateTime(updateInfo.publishedAt)})` : ''} — Cliquez pour mettre à jour`}
+            title="Nouvelle release disponible sur GitHub ({updateInfo.tagName})"
           >
             ⬆️ Mise à jour v{updateInfo.latestVersion} dispo !
           </a>
@@ -95,13 +81,7 @@
   </main>
 
   <footer class="text-center py-4 text-xs" style="color: var(--text-muted);">
-    <span
-      class="cursor-help underline decoration-dotted transition-colors hover:text-slate-200"
-      data-tooltip={lastUpdateTooltip}
-    >
-      Sortarr v{data?.currentVersion || '1.0.0'}
-    </span>
-    • <a href="https://github.com/LRoffic/Sortarr/releases" target="_blank" class="underline hover:text-purple-400">GitHub Releases</a> • Données actualisées manuellement ou toutes les 20 min
+    Sortarr v{data?.currentVersion || '1.0.0'} • <a href="https://github.com/LRoffic/Sortarr/releases" target="_blank" class="underline hover:text-purple-400">GitHub Releases</a> • Données actualisées manuellement ou toutes les 20 min
   </footer>
 
   <Tooltip />
