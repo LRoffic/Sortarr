@@ -49,5 +49,5 @@ describe('telemetry service', () => {
     const res = await sendTelemetryPing({ isTest: true, force: true });
     expect(res).toBeDefined();
     expect(typeof res.ok).toBe('boolean');
-  });
+  }, 15000);
 });

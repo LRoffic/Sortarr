@@ -286,8 +286,15 @@
     telemetryTestResult = null;
     try {
       const res = await fetch('/api/telemetry/test', { method: 'POST' });
+      if (res.status === 401) {
+        telemetryTestResult = { ok: false, error: 'Session expirée : veuillez rafraîchir la page (F5) et vous reconnecter.' };
+        return;
+      }
       const r = await res.json();
       telemetryTestResult = r;
+      if (r.payload?.instance_id && !instanceId) {
+        instanceId = r.payload.instance_id;
+      }
     } catch (e) {
       telemetryTestResult = { ok: false, error: e.message };
     } finally {
@@ -2242,7 +2249,7 @@
         disabled={isTestingTelemetry}
         class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shrink-0 transition-colors hover:bg-slate-800"
         style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
-        data-tooltip="Envoie un ping de test (is_test: true) vers tele-sortarr.lripsum.net sans impacter les statistiques"
+        data-tooltip="Envoie un ping de test (is_test: true) vers le serveur de télémétrie sans impacter les statistiques"
       >
         {isTestingTelemetry ? '⏳ Test en cours...' : '🧪 Tester la télémétrie'}
       </button>
@@ -2255,7 +2262,7 @@
           Autoriser l'envoi de la télémétrie anonyme
         </label>
         <p class="text-[11px]" style="color: var(--text-muted);">
-          Désactivez cette option si vous souhaitez bloquer tout envoi de télémétrie vers <code class="text-slate-300">tele-sortarr.lripsum.net</code>.
+          Désactivez cette option si vous souhaitez bloquer tout envoi de télémétrie anonyme.
         </p>
       </div>
       <input
