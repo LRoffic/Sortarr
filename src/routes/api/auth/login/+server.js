@@ -9,6 +9,7 @@ import {
   createSessionToken,
   SESSION_COOKIE
 } from '$lib/auth.server.js';
+import { loginSchema, validateForm } from '$lib/validation.js';
 
 export async function POST({ request, cookies, getClientAddress }) {
   let ip = 'unknown';
@@ -18,7 +19,13 @@ export async function POST({ request, cookies, getClientAddress }) {
 
   try {
     checkRateLimit(ip);
-    const { username, password, recaptchaToken, captchaToken, captchaAnswer } = await request.json();
+    const body = await request.json();
+    const validation = await validateForm(loginSchema, body);
+    if (!validation.valid) {
+      return json({ ok: false, error: validation.firstError, errors: validation.errors }, { status: 400 });
+    }
+
+    const { username, password, recaptchaToken, captchaToken, captchaAnswer } = validation.data;
 
     // 1. Vérifier le reCAPTCHA (Google v2 ou intégré)
     await verifyCaptchaResponse({ recaptchaToken, captchaToken, captchaAnswer, ip });

@@ -1,10 +1,12 @@
 <script>
   import { onMount } from 'svelte';
+  import { loginSchema, verify2FASchema, validateForm } from '$lib/validation.js';
 
   let username = $state('');
   let password = $state('');
   let isSubmitting = $state(false);
   let error = $state('');
+  let fieldErrors = $state({});
 
   // Captcha state
   let captchaMode = $state('builtin'); // 'google' | 'builtin' | 'disabled'
@@ -65,6 +67,15 @@
   async function handleLogin(event) {
     event?.preventDefault();
     error = '';
+    fieldErrors = {};
+
+    // Validation préalable côté client avec Yup
+    const validation = await validateForm(loginSchema, { username, password });
+    if (!validation.valid) {
+      fieldErrors = validation.errors || {};
+      error = validation.firstError || 'Identifiant ou mot de passe manquant';
+      return;
+    }
 
     let recaptchaToken = '';
     if (captchaMode === 'disabled') {
@@ -101,6 +112,7 @@
       });
       const data = await res.json();
       if (!data.ok) {
+        if (data.errors) fieldErrors = data.errors;
         error = data.error || 'Identifiants invalides';
         if (captchaMode === 'google') {
           window.grecaptcha?.reset?.();
@@ -124,10 +136,15 @@
   async function handleVerify2FA(event) {
     event?.preventDefault();
     error = '';
-    if (!totpCode.trim()) {
-      error = 'Veuillez saisir votre code 2FA à 6 chiffres';
+    fieldErrors = {};
+
+    const validation = await validateForm(verify2FASchema, { pendingToken, code: totpCode });
+    if (!validation.valid) {
+      fieldErrors = validation.errors || {};
+      error = validation.firstError || 'Veuillez saisir votre code 2FA';
       return;
     }
+
     isSubmitting = true;
     try {
       const res = await fetch('/api/auth/verify-2fa', {
@@ -194,8 +211,11 @@
             bind:value={username}
             placeholder="Votre identifiant"
             class="w-full px-3.5 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+            style="background: var(--bg-card); border: 1px solid {fieldErrors.username ? '#ef4444' : 'var(--border)'}; color: #e2e8f0;"
           />
+          {#if fieldErrors.username}
+            <p class="text-[11px] text-red-400 mt-1">{fieldErrors.username}</p>
+          {/if}
         </div>
 
         <div>
@@ -210,8 +230,11 @@
             bind:value={password}
             placeholder="••••••••"
             class="w-full px-3.5 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+            style="background: var(--bg-card); border: 1px solid {fieldErrors.password ? '#ef4444' : 'var(--border)'}; color: #e2e8f0;"
           />
+          {#if fieldErrors.password}
+            <p class="text-[11px] text-red-400 mt-1">{fieldErrors.password}</p>
+          {/if}
         </div>
 
         <!-- Protection reCAPTCHA -->
@@ -299,8 +322,11 @@
             bind:value={totpCode}
             placeholder="123456"
             class="w-full px-3.5 py-2.5 rounded-lg text-center text-lg font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-purple-500"
-            style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+            style="background: var(--bg-card); border: 1px solid {fieldErrors.code ? '#ef4444' : 'var(--border)'}; color: #e2e8f0;"
           />
+          {#if fieldErrors.code}
+            <p class="text-[11px] text-red-400 mt-1 text-center">{fieldErrors.code}</p>
+          {/if}
         </div>
 
         <button

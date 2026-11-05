@@ -8,6 +8,7 @@ import {
   createSessionToken,
   SESSION_COOKIE
 } from '$lib/auth.server.js';
+import { verify2FASchema, validateForm } from '$lib/validation.js';
 
 export async function POST({ request, cookies, getClientAddress }) {
   let ip = 'unknown';
@@ -17,7 +18,12 @@ export async function POST({ request, cookies, getClientAddress }) {
 
   try {
     checkRateLimit(ip);
-    const { pendingToken, code } = await request.json();
+    const body = await request.json();
+    const validation = await validateForm(verify2FASchema, body);
+    if (!validation.valid) {
+      return json({ ok: false, error: validation.firstError, errors: validation.errors }, { status: 400 });
+    }
+    const { pendingToken, code } = validation.data;
     const username = verifyPending2FAToken(pendingToken);
     if (!username) {
       return json(

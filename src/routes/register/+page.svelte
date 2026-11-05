@@ -1,9 +1,19 @@
 <script>
+  import { registerSchema, totpConfirmSchema, validateForm } from '$lib/validation.js';
+
   let username = $state('');
   let password = $state('');
   let confirmPassword = $state('');
   let isSubmitting = $state(false);
   let error = $state('');
+  let fieldErrors = $state({});
+
+  // Indicateurs en direct pour la sécurité du mot de passe
+  let hasMinLength = $derived(password.length >= 8);
+  let hasLowercase = $derived(/[a-z]/.test(password));
+  let hasUppercase = $derived(/[A-Z]/.test(password));
+  let hasNumber = $derived(/[0-9]/.test(password));
+  let hasSymbol = $derived(/[^a-zA-Z0-9\s]/.test(password));
 
   // Étape optionnelle de configuration 2FA juste après l'inscription
   let registered = $state(false);
@@ -14,8 +24,18 @@
 
   async function handleRegister(event) {
     event?.preventDefault();
-    isSubmitting = true;
+    fieldErrors = {};
     error = '';
+
+    // Validation préalable côté client avec Yup & Yup-Password
+    const validation = await validateForm(registerSchema, { username, password, confirmPassword });
+    if (!validation.valid) {
+      fieldErrors = validation.errors || {};
+      error = validation.firstError || 'Veuillez corriger les erreurs du formulaire';
+      return;
+    }
+
+    isSubmitting = true;
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
@@ -24,6 +44,7 @@
       });
       const data = await res.json();
       if (!data.ok) {
+        if (data.errors) fieldErrors = data.errors;
         error = data.error || "Erreur lors de l'inscription";
       } else {
         // Génère immédiatement une proposition de configuration 2FA
@@ -50,8 +71,16 @@
 
   async function confirm2FA(event) {
     event?.preventDefault();
-    isSubmitting = true;
+    fieldErrors = {};
     error = '';
+
+    const validation = await validateForm(totpConfirmSchema, { code: totpCode });
+    if (!validation.valid) {
+      error = validation.firstError;
+      return;
+    }
+
+    isSubmitting = true;
     try {
       const res = await fetch('/api/auth/2fa', {
         method: 'POST',
@@ -110,8 +139,11 @@
             bind:value={username}
             placeholder="admin"
             class="w-full px-3.5 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+            style="background: var(--bg-card); border: 1px solid {fieldErrors.username ? '#ef4444' : 'var(--border)'}; color: #e2e8f0;"
           />
+          {#if fieldErrors.username}
+            <p class="text-[11px] text-red-400 mt-1">{fieldErrors.username}</p>
+          {/if}
         </div>
 
         <div>
@@ -126,8 +158,31 @@
             bind:value={password}
             placeholder="••••••••"
             class="w-full px-3.5 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+            style="background: var(--bg-card); border: 1px solid {fieldErrors.password ? '#ef4444' : 'var(--border)'}; color: #e2e8f0;"
           />
+          {#if fieldErrors.password}
+            <p class="text-[11px] text-red-400 mt-1">{fieldErrors.password}</p>
+          {/if}
+
+          <!-- Exigences de sécurité Yup-Password -->
+          <div class="mt-2 p-2.5 rounded-lg text-[11px] space-y-1" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border);">
+            <div class="font-semibold text-slate-300 mb-1">Exigences de sécurité (Yup Password) :</div>
+            <div class="flex items-center gap-1.5 {hasMinLength ? 'text-emerald-400 font-medium' : 'text-slate-400'}">
+              <span>{hasMinLength ? '✓' : '○'}</span> Au moins 8 caractères
+            </div>
+            <div class="flex items-center gap-1.5 {hasUppercase ? 'text-emerald-400 font-medium' : 'text-slate-400'}">
+              <span>{hasUppercase ? '✓' : '○'}</span> Au moins 1 majuscule (A-Z)
+            </div>
+            <div class="flex items-center gap-1.5 {hasLowercase ? 'text-emerald-400 font-medium' : 'text-slate-400'}">
+              <span>{hasLowercase ? '✓' : '○'}</span> Au moins 1 minuscule (a-z)
+            </div>
+            <div class="flex items-center gap-1.5 {hasNumber ? 'text-emerald-400 font-medium' : 'text-slate-400'}">
+              <span>{hasNumber ? '✓' : '○'}</span> Au moins 1 chiffre (0-9)
+            </div>
+            <div class="flex items-center gap-1.5 {hasSymbol ? 'text-emerald-400 font-medium' : 'text-slate-400'}">
+              <span>{hasSymbol ? '✓' : '○'}</span> Au moins 1 symbole spécial (@, #, !, ...)
+            </div>
+          </div>
         </div>
 
         <div>
@@ -142,8 +197,11 @@
             bind:value={confirmPassword}
             placeholder="••••••••"
             class="w-full px-3.5 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+            style="background: var(--bg-card); border: 1px solid {fieldErrors.confirmPassword ? '#ef4444' : 'var(--border)'}; color: #e2e8f0;"
           />
+          {#if fieldErrors.confirmPassword}
+            <p class="text-[11px] text-red-400 mt-1">{fieldErrors.confirmPassword}</p>
+          {/if}
         </div>
 
         <button

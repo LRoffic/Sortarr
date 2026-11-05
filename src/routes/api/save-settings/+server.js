@@ -2,14 +2,21 @@ import { json } from '@sveltejs/kit';
 import { saveConfig } from '$lib/config.server.js';
 import { testConnection } from '$lib/prowlarr.server.js';
 import { restartScheduler } from '$lib/scheduler.server.js';
+import { settingsSchema, validateForm } from '$lib/validation.js';
 
 export async function POST({ request }) {
-  let body;
+  let rawBody;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return json({ ok: false, error: 'Requête invalide' }, { status: 400 });
   }
+
+  const validation = await validateForm(settingsSchema, rawBody);
+  if (!validation.valid) {
+    return json({ ok: false, error: validation.firstError, errors: validation.errors }, { status: 400 });
+  }
+  const body = rawBody;
 
   const prowlarrUrl = String(body.prowlarrUrl ?? '').trim().replace(/\/+$/, '');
   const prowlarrApiKey = String(body.prowlarrApiKey ?? '').trim();

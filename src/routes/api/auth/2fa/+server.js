@@ -7,6 +7,13 @@ import {
   getSecuritySettings,
   changePassword
 } from '$lib/auth.server.js';
+import {
+  changePasswordSchema,
+  totpConfirmSchema,
+  totpDisableSchema,
+  recaptchaSettingsSchema,
+  validateForm
+} from '$lib/validation.js';
 
 export async function POST({ request, locals }) {
   if (!locals.user) {
@@ -17,10 +24,11 @@ export async function POST({ request, locals }) {
     const { action } = body;
 
     if (action === 'change-password') {
-      if (body.newPassword !== body.confirmPassword) {
-        throw new Error('Les nouveaux mots de passe ne correspondent pas');
+      const validation = await validateForm(changePasswordSchema, body);
+      if (!validation.valid) {
+        return json({ ok: false, error: validation.firstError, errors: validation.errors }, { status: 400 });
       }
-      changePassword(locals.user.username, body.currentPassword, body.newPassword);
+      changePassword(locals.user.username, validation.data.currentPassword, validation.data.newPassword);
       return json({ ok: true });
     }
 
@@ -30,7 +38,11 @@ export async function POST({ request, locals }) {
     }
 
     if (action === 'confirm') {
-      const { backupCodes } = confirmTotpSetup(locals.user.username, body.code);
+      const validation = await validateForm(totpConfirmSchema, body);
+      if (!validation.valid) {
+        return json({ ok: false, error: validation.firstError, errors: validation.errors }, { status: 400 });
+      }
+      const { backupCodes } = confirmTotpSetup(locals.user.username, validation.data.code);
       return json({
         ok: true,
         backupCodes,
@@ -39,7 +51,11 @@ export async function POST({ request, locals }) {
     }
 
     if (action === 'disable') {
-      disableTotp(locals.user.username, body.codeOrPassword);
+      const validation = await validateForm(totpDisableSchema, body);
+      if (!validation.valid) {
+        return json({ ok: false, error: validation.firstError, errors: validation.errors }, { status: 400 });
+      }
+      disableTotp(locals.user.username, validation.data.codeOrPassword);
       return json({
         ok: true,
         security: getSecuritySettings(locals.user.username)
@@ -47,7 +63,15 @@ export async function POST({ request, locals }) {
     }
 
     if (action === 'save-recaptcha') {
-      saveRecaptchaSettings(body.siteKey, body.secretKey, body.captchaDisabled);
+      const validation = await validateForm(recaptchaSettingsSchema, body);
+      if (!validation.valid) {
+        return json({ ok: false, error: validation.firstError, errors: validation.errors }, { status: 400 });
+      }
+      saveRecaptchaSettings(
+        validation.data.siteKey,
+        validation.data.secretKey,
+        validation.data.captchaDisabled
+      );
       return json({
         ok: true,
         security: getSecuritySettings(locals.user.username)

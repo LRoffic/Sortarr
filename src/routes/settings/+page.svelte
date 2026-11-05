@@ -2,6 +2,14 @@
   import { untrack, onMount } from 'svelte';
   import { getTrackerLogo, getTrackerInitials } from '$lib/logos.js';
   import { markdownToHtml } from '$lib/markdown.js';
+  import {
+    changePasswordSchema,
+    totpConfirmSchema,
+    totpDisableSchema,
+    recaptchaSettingsSchema,
+    settingsSchema,
+    validateForm
+  } from '$lib/validation.js';
 
   let { data } = $props();
   let failedLogos = $state({});
@@ -278,10 +286,32 @@
   let currentPassword = $state('');
   let newPassword = $state('');
   let confirmNewPassword = $state('');
+  let pwdFieldErrors = $state({});
+
+  // Indicateurs en direct de conformité yup-password
+  let newPwdHasMinLength = $derived(newPassword.length >= 8);
+  let newPwdHasLowercase = $derived(/[a-z]/.test(newPassword));
+  let newPwdHasUppercase = $derived(/[A-Z]/.test(newPassword));
+  let newPwdHasNumber = $derived(/[0-9]/.test(newPassword));
+  let newPwdHasSymbol = $derived(/[^a-zA-Z0-9\s]/.test(newPassword));
 
   async function updatePassword() {
-    secLoading = true;
+    pwdFieldErrors = {};
     secMsg = null;
+
+    const validation = await validateForm(changePasswordSchema, {
+      currentPassword,
+      newPassword,
+      confirmPassword: confirmNewPassword
+    });
+
+    if (!validation.valid) {
+      pwdFieldErrors = validation.errors || {};
+      secMsg = { ok: false, text: validation.firstError };
+      return;
+    }
+
+    secLoading = true;
     try {
       const res = await fetch('/api/auth/2fa', {
         method: 'POST',
@@ -294,7 +324,10 @@
         })
       });
       const r = await res.json();
-      if (!r.ok) throw new Error(r.error);
+      if (!r.ok) {
+        if (r.errors) pwdFieldErrors = r.errors;
+        throw new Error(r.error);
+      }
       currentPassword = '';
       newPassword = '';
       confirmNewPassword = '';
@@ -328,8 +361,14 @@
   }
 
   async function confirm2FASetup() {
-    secLoading = true;
     secMsg = null;
+    const val = await validateForm(totpConfirmSchema, { code: confirmTotpCode });
+    if (!val.valid) {
+      secMsg = { ok: false, text: val.firstError };
+      return;
+    }
+
+    secLoading = true;
     try {
       const res = await fetch('/api/auth/2fa', {
         method: 'POST',
@@ -353,8 +392,14 @@
   }
 
   async function disable2FA() {
-    secLoading = true;
     secMsg = null;
+    const val = await validateForm(totpDisableSchema, { codeOrPassword: disableTotpInput });
+    if (!val.valid) {
+      secMsg = { ok: false, text: val.firstError };
+      return;
+    }
+
+    secLoading = true;
     try {
       const res = await fetch('/api/auth/2fa', {
         method: 'POST',
@@ -376,8 +421,18 @@
   }
 
   async function saveRecaptcha() {
-    secLoading = true;
     secMsg = null;
+    const val = await validateForm(recaptchaSettingsSchema, {
+      siteKey: recaptchaSiteKey,
+      secretKey: recaptchaSecretKey,
+      captchaDisabled
+    });
+    if (!val.valid) {
+      secMsg = { ok: false, text: val.firstError };
+      return;
+    }
+
+    secLoading = true;
     try {
       const res = await fetch('/api/auth/2fa', {
         method: 'POST',
@@ -585,27 +640,39 @@
     event?.preventDefault();
     isSaving = true;
     saveResult = null;
+
+    const payload = {
+      prowlarrUrl,
+      prowlarrApiKey,
+      autoRefreshInterval,
+      autoSortEnabled,
+      autoSortInterval,
+      apiRatioUrl,
+      taggingEnabled,
+      taggingTag,
+      taggingRatioThreshold,
+      taggingExcludeFreeleech,
+      radarrUrl,
+      radarrApiKey,
+      sonarrUrl,
+      sonarrApiKey,
+      trackers: $state.snapshot(trackers)
+    };
+
+    const val = await validateForm(settingsSchema, payload);
+    if (!val.valid) {
+      saveResult = { ok: false, error: val.firstError, errors: val.errors };
+      autoSaveStatus = 'error';
+      autoSaveError = val.firstError;
+      isSaving = false;
+      return;
+    }
+
     try {
       const res = await fetch('/api/save-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prowlarrUrl,
-          prowlarrApiKey,
-          autoRefreshInterval,
-          autoSortEnabled,
-          autoSortInterval,
-          apiRatioUrl,
-          taggingEnabled,
-          taggingTag,
-          taggingRatioThreshold,
-          taggingExcludeFreeleech,
-          radarrUrl,
-          radarrApiKey,
-          sonarrUrl,
-          sonarrApiKey,
-          trackers: $state.snapshot(trackers)
-        })
+        body: JSON.stringify(payload)
       });
       saveResult = await res.json();
       if (saveResult.ok) {
@@ -1651,31 +1718,71 @@
     <div class="rounded-lg p-3 space-y-2.5" style="background: var(--bg-card); border: 1px solid var(--border);">
       <div class="text-xs font-semibold">🔑 Modifier le mot de passe</div>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-        <input
-          type="password"
-          bind:value={currentPassword}
-          placeholder="Mot de passe actuel"
-          autocomplete="current-password"
-          class="px-2.5 py-1.5 rounded"
-          style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;"
-        />
-        <input
-          type="password"
-          bind:value={newPassword}
-          placeholder="Nouveau mot de passe (min. 4 car.)"
-          autocomplete="new-password"
-          class="px-2.5 py-1.5 rounded"
-          style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;"
-        />
-        <input
-          type="password"
-          bind:value={confirmNewPassword}
-          placeholder="Confirmer le nouveau mot de passe"
-          autocomplete="new-password"
-          class="px-2.5 py-1.5 rounded"
-          style="background: var(--bg-secondary); border: 1px solid var(--border); color: #e2e8f0;"
-        />
+        <div>
+          <input
+            type="password"
+            bind:value={currentPassword}
+            placeholder="Mot de passe actuel"
+            autocomplete="current-password"
+            class="w-full px-2.5 py-1.5 rounded"
+            style="background: var(--bg-secondary); border: 1px solid {pwdFieldErrors.currentPassword ? '#ef4444' : 'var(--border)'}; color: #e2e8f0;"
+          />
+          {#if pwdFieldErrors.currentPassword}
+            <p class="text-[10px] text-red-400 mt-0.5">{pwdFieldErrors.currentPassword}</p>
+          {/if}
+        </div>
+        <div>
+          <input
+            type="password"
+            bind:value={newPassword}
+            placeholder="Nouveau mot de passe (min. 8 car.)"
+            autocomplete="new-password"
+            class="w-full px-2.5 py-1.5 rounded"
+            style="background: var(--bg-secondary); border: 1px solid {pwdFieldErrors.newPassword ? '#ef4444' : 'var(--border)'}; color: #e2e8f0;"
+          />
+          {#if pwdFieldErrors.newPassword}
+            <p class="text-[10px] text-red-400 mt-0.5">{pwdFieldErrors.newPassword}</p>
+          {/if}
+        </div>
+        <div>
+          <input
+            type="password"
+            bind:value={confirmNewPassword}
+            placeholder="Confirmer le nouveau mot de passe"
+            autocomplete="new-password"
+            class="w-full px-2.5 py-1.5 rounded"
+            style="background: var(--bg-secondary); border: 1px solid {pwdFieldErrors.confirmPassword ? '#ef4444' : 'var(--border)'}; color: #e2e8f0;"
+          />
+          {#if pwdFieldErrors.confirmPassword}
+            <p class="text-[10px] text-red-400 mt-0.5">{pwdFieldErrors.confirmPassword}</p>
+          {/if}
+        </div>
       </div>
+
+      {#if newPassword}
+        <!-- Indicateurs dynamiques Yup Password -->
+        <div class="p-2 rounded text-[11px] space-y-1" style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border);">
+          <div class="text-[10px] font-semibold text-slate-400">Exigences requises (Yup Password) :</div>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10px]">
+            <span class={newPwdHasMinLength ? 'text-emerald-400' : 'text-slate-500'}>
+              {newPwdHasMinLength ? '✓' : '○'} 8+ caractères
+            </span>
+            <span class={newPwdHasUppercase ? 'text-emerald-400' : 'text-slate-500'}>
+              {newPwdHasUppercase ? '✓' : '○'} 1 majuscule
+            </span>
+            <span class={newPwdHasLowercase ? 'text-emerald-400' : 'text-slate-500'}>
+              {newPwdHasLowercase ? '✓' : '○'} 1 minuscule
+            </span>
+            <span class={newPwdHasNumber ? 'text-emerald-400' : 'text-slate-500'}>
+              {newPwdHasNumber ? '✓' : '○'} 1 chiffre
+            </span>
+            <span class={newPwdHasSymbol ? 'text-emerald-400' : 'text-slate-500'}>
+              {newPwdHasSymbol ? '✓' : '○'} 1 symbole
+            </span>
+          </div>
+        </div>
+      {/if}
+
       <div class="flex justify-end">
         <button
           type="button"
@@ -1684,7 +1791,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"
           style="background: var(--accent); color: white; opacity: {(secLoading || !currentPassword || !newPassword || !confirmNewPassword) ? 0.5 : 1};"
         >
-          Modifier le mot de passe
+          {secLoading ? '⏳ Modification...' : 'Modifier le mot de passe'}
         </button>
       </div>
     </div>
