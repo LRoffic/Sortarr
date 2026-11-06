@@ -147,5 +147,15 @@ export function initServerLifecycle() {
     } catch {}
   }
 
+  // Protection globale contre les interruptions inattendues par promesses ou erreurs réseau non gérées
+  try {
+    process.on('unhandledRejection', (reason) => {
+      console.warn('[Sortarr Lifecycle] Rejet de promesse non intercepté (protégé pour préserver le serveur) :', reason?.message || reason);
+    });
+    process.on('uncaughtException', (err) => {
+      console.error('[Sortarr Lifecycle] Exception non interceptée (protégée pour préserver le serveur) :', err?.message || err);
+    });
+  } catch {}
+
   console.log('[Sortarr Lifecycle] Écouteurs de redémarrage à chaud initialisés (SIGHUP, SIGUSR1, SIGUSR2, tmp/restart.txt).');
 }

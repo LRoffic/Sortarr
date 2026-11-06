@@ -18,6 +18,7 @@ let schedulerTimer = null;
 let statsSnapshotTimer = null;
 let lastRun = null;
 let lastRunStatus = null;
+let isSortingRunning = false;
 
 async function collectDailySnapshotOnly() {
   const config = getConfig();
@@ -53,6 +54,12 @@ export async function runAutoSort() {
     return { ok: false, reason: 'no_config' };
   }
 
+  if (isSortingRunning) {
+    log('Cycle déjà en cours d’exécution, ignoré.');
+    return { ok: false, reason: 'already_running' };
+  }
+
+  isSortingRunning = true;
   log('Starting auto-sort cycle...');
   try {
     const sorted = sortIndexers(await getEnrichedIndexers({ force: true }));
@@ -96,6 +103,8 @@ export async function runAutoSort() {
     lastRunStatus = { ok: false, errors: [e.message] };
     log(`Error: ${e.message}`);
     return lastRunStatus;
+  } finally {
+    isSortingRunning = false;
   }
 }
 
@@ -140,8 +149,10 @@ export function restartScheduler() {
   log(`Scheduler started — interval: ${config.autoSortInterval ?? 20} min`);
 
   // Run immediately on start, then on interval
-  runAutoSort();
-  schedulerTimer = setInterval(() => runAutoSort(), intervalMs);
+  runAutoSort().catch((err) => console.warn('[Sortarr Scheduler] Erreur cycle immédiat :', err?.message || err));
+  schedulerTimer = setInterval(() => {
+    runAutoSort().catch((err) => console.warn('[Sortarr Scheduler] Erreur cycle planifié :', err?.message || err));
+  }, intervalMs);
 }
 
 /**
