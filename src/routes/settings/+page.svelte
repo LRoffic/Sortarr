@@ -59,6 +59,20 @@
     }
   }
 
+  let isRefreshingPage = $state(false);
+
+  async function refreshPageAfterUpdate() {
+    isRefreshingPage = true;
+    for (let i = 0; i < 6; i++) {
+      try {
+        const res = await fetch('/api/update', { method: 'GET', cache: 'no-store' });
+        if (res.ok) break;
+      } catch {}
+      await new Promise((r) => setTimeout(r, 700));
+    }
+    window.location.reload();
+  }
+
   async function installUpdate() {
     isInstallingUpdate = true;
     updateResult = null;
@@ -66,9 +80,16 @@
       const res = await fetch('/api/update', { method: 'POST' });
       const r = await res.json();
       if (!r.ok) throw new Error(r.error || 'Erreur lors de la mise à jour');
+      const hotRestarted = Boolean(r.hotRestart?.triggered);
+      const signalInfo = r.hotRestart?.signal ? ` (${r.hotRestart.signal})` : '';
       updateResult = {
         ok: true,
-        text: `Mise à jour v${r.installedVersion} (${r.tagName}) installée et compilée avec succès ! Redémarrez le serveur Node si vous êtes en mode production.`,
+        hotRestarted,
+        hotRestartSignal: r.hotRestart?.signal || null,
+        askRefresh: true,
+        text: hotRestarted
+          ? `La mise à jour v${r.installedVersion} (${r.tagName}) s'est effectuée avec succès et le serveur a été redémarré${signalInfo}. Veuillez rafraîchir la page pour charger la nouvelle version.`
+          : `La mise à jour v${r.installedVersion} (${r.tagName}) s'est effectuée avec succès ! Le redémarrage à chaud n'étant pas supporté sur ce serveur, veuillez redémarrer le serveur manuellement puis rafraîchir la page.`,
         logs: r.logs || []
       };
       if (r.status) updateStatus = r.status;
@@ -2728,6 +2749,20 @@
                 </span>
               {/if}
             </div>
+            {#if updateStatus.hotRestart}
+              <div>
+                <span style="color: var(--text-muted);">Redémarrage à chaud :</span>
+                <span
+                  class="font-mono font-bold ml-1 px-2 py-0.5 rounded cursor-help"
+                  style="background: {updateStatus.hotRestart.supported ? '#22c55e22' : '#1e293b'}; color: {updateStatus.hotRestart.supported ? '#4ade80' : '#94a3b8'};"
+                  data-tooltip={updateStatus.hotRestart.supported
+                    ? `Pris en charge (${updateStatus.hotRestart.supportedSignals?.join(', ') || updateStatus.hotRestart.signal})`
+                    : 'Non supporté sur cet environnement (redémarrage manuel requis)'}
+                >
+                  {updateStatus.hotRestart.supported ? updateStatus.hotRestart.signal : 'Non supporté'}
+                </span>
+              </div>
+            {/if}
           </div>
 
           {#if updateStatus.updateAvailable}
@@ -2869,9 +2904,22 @@
     {/if}
 
     {#if updateResult}
-      <div class="rounded-lg p-3 space-y-2 text-xs"
+      <div class="rounded-lg p-3 space-y-2.5 text-xs"
            style="background: {updateResult.ok ? '#22c55e22' : '#ef444422'}; border: 1px solid {updateResult.ok ? '#22c55e' : '#ef4444'}; color: {updateResult.ok ? '#4ade80' : '#f87171'};">
-        <div class="font-semibold">{updateResult.ok ? '✅' : '❌'} {updateResult.text}</div>
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="font-semibold leading-relaxed">{updateResult.ok ? '✅' : '❌'} {updateResult.text}</div>
+          {#if updateResult.ok && updateResult.askRefresh}
+            <button
+              type="button"
+              onclick={refreshPageAfterUpdate}
+              disabled={isRefreshingPage}
+              class="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer shrink-0 shadow transition-transform hover:scale-102"
+              style="background: #22c55e; color: #052e16; opacity: {isRefreshingPage ? 0.7 : 1};"
+            >
+              {isRefreshingPage ? '⏳ Rafraîchissement...' : '🔄 Rafraîchir la page'}
+            </button>
+          {/if}
+        </div>
         {#if updateResult.logs?.length > 0}
           <details class="mt-1">
             <summary class="cursor-pointer text-[11px] underline">Voir le journal détaillé de mise à jour</summary>

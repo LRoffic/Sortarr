@@ -8,6 +8,7 @@ import {
   TELEMETRY_URL
 } from '../src/lib/telemetry.server.js';
 import { getConfig } from '../src/lib/config.server.js';
+import { getCurrentVersion } from '../src/lib/updater.server.js';
 
 describe('telemetry service', () => {
   it('has valid telemetry endpoint URL', () => {
@@ -37,7 +38,7 @@ describe('telemetry service', () => {
     expect(payload).toBeDefined();
     expect(payload.instance_id).toBe(cfg.instanceId);
     expect(payload.instance_id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
-    expect(payload.version).toBe('1.0.7');
+    expect(payload.version).toBe(getCurrentVersion());
     expect(typeof payload.os).toBe('string');
     expect(typeof payload.arch).toBe('string');
     expect(typeof payload.is_docker).toBe('boolean');

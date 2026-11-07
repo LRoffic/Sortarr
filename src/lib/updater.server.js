@@ -265,6 +265,9 @@ export async function checkForUpdates({ force = false } = {}) {
       isLatest: String(r.tag_name) === String(release.tag_name)
     }));
 
+    const { checkHotRestartSupport } = await import('./lifecycle.server.js');
+    const hotRestart = checkHotRestartSupport();
+
     const result = {
       ok: true,
       repo: GITHUB_REPO,
@@ -282,6 +285,7 @@ export async function checkForUpdates({ force = false } = {}) {
       tarballUrl: release.tarball_url || `https://api.github.com/repos/${GITHUB_REPO}/tarball/${release.tag_name}`,
       zipballUrl: release.zipball_url || `https://api.github.com/repos/${GITHUB_REPO}/zipball/${release.tag_name}`,
       releases: releasesList,
+      hotRestart,
       checkedAt: new Date().toISOString()
     };
 
@@ -406,14 +410,39 @@ export async function performUpdate() {
   });
   log('Build terminé avec succès', buildOut.trim().slice(-400));
 
-  // Déclenche le redémarrage à chaud (tmp/restart.txt, signaux POSIX SIGHUP/SIGUSR2, PM2)
-  setTimeout(async () => {
-    try {
-      const { triggerHotRestart } = await import('./lifecycle.server.js');
-      triggerHotRestart();
-      log('Signal de redémarrage à chaud déclenché avec succès');
-    } catch {}
-  }, 1000);
+  // Vérifie si le serveur prend en charge les redémarrages à chaud (SIGHUP, SIGUSR1, SIGUSR2, IPC) et l'effectue si oui
+  let hotRestart = { supported: false, triggered: false, signal: null, supportedSignals: [], label: 'Non supporté' };
+  try {
+    const { checkHotRestartSupport, triggerHotRestart, touchRestartFile } = await import('./lifecycle.server.js');
+    const support = checkHotRestartSupport();
+    touchRestartFile();
+
+    if (support.supported) {
+      hotRestart = {
+        supported: true,
+        triggered: true,
+        signal: support.signal,
+        supportedSignals: support.supportedSignals,
+        label: support.label
+      };
+      log(
+        `Vérification du redémarrage à chaud : pris en charge (${support.signal})`,
+        `Signaux supportés : ${support.supportedSignals.join(', ') || support.signal}. Le serveur redémarre automatiquement.`
+      );
+      setTimeout(() => {
+        try {
+          triggerHotRestart(support.signal);
+        } catch {}
+      }, 1000);
+    } else {
+      log(
+        'Vérification du redémarrage à chaud : non supporté sur ce serveur',
+        'Un redémarrage manuel du serveur Node.js est nécessaire pour charger la nouvelle version.'
+      );
+    }
+  } catch (err) {
+    log('Avertissement lors de la vérification du redémarrage à chaud', err?.message || '');
+  }
 
   // Enregistre l'horodatage de la dernière mise à jour réussie
   try {
@@ -429,6 +458,7 @@ export async function performUpdate() {
     previousVersion: check.currentVersion,
     installedVersion: targetVersion,
     tagName: targetTag,
+    hotRestart,
     logs,
     status: updatedStatus
   };

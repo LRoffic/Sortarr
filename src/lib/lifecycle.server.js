@@ -4,9 +4,12 @@
  * PM2, Docker et systemd.
  */
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { stopScheduler, restartScheduler } from './scheduler.server.js';
 import { clearUpdateCache } from './updater.server.js';
+
+export const HOT_RESTART_SIGNALS = ['SIGHUP', 'SIGUSR1', 'SIGUSR2'];
 
 let initialized = false;
 
@@ -64,33 +67,98 @@ export function handleHotRestart(signal) {
 }
 
 /**
- * Déclenche un redémarrage à chaud depuis l'application (ex: après mise à jour GitHub).
+ * Vérifie si le serveur prend en charge le redémarrage à chaud (SIGHUP, SIGUSR1, SIGUSR2 ou IPC PM2).
  */
-export function triggerHotRestart() {
+export function checkHotRestartSupport({
+  platform = process.platform,
+  osSignals = os.constants?.signals || {},
+  envSignal = process.env.HOT_RESTART_SIGNAL
+} = {}) {
+  initServerLifecycle();
+
+  const normalizedEnv = String(envSignal || '').trim().toUpperCase();
+  if (normalizedEnv === 'NONE' || normalizedEnv === 'NON SUPPORTÉ' || normalizedEnv === 'FALSE' || normalizedEnv === '0') {
+    return {
+      supported: false,
+      signal: null,
+      supportedSignals: [],
+      label: 'Non supporté'
+    };
+  }
+
+  const hasIpc =
+    typeof process.send === 'function' &&
+    Boolean(process.env.PM2_HOME || process.env.pm_id !== undefined);
+  const supportedSignals =
+    platform !== 'win32'
+      ? HOT_RESTART_SIGNALS.filter((sig) => typeof osSignals[sig] === 'number')
+      : [];
+
+  if (supportedSignals.length === 0 && !hasIpc) {
+    return {
+      supported: false,
+      signal: null,
+      supportedSignals: [],
+      label: 'Non supporté'
+    };
+  }
+
+  let signal = null;
+  if (normalizedEnv && supportedSignals.includes(normalizedEnv)) {
+    signal = normalizedEnv;
+  } else if (supportedSignals.includes('SIGHUP')) {
+    signal = 'SIGHUP';
+  } else if (supportedSignals.length > 0) {
+    signal = supportedSignals[0];
+  } else if (hasIpc) {
+    signal = 'IPC';
+  }
+
+  return {
+    supported: Boolean(signal),
+    signal,
+    supportedSignals,
+    label: signal || 'Non supporté'
+  };
+}
+
+/**
+ * Déclenche un redémarrage à chaud depuis l'application (ex: après mise à jour GitHub)
+ * uniquement si le serveur le prend en charge.
+ */
+export function triggerHotRestart(preferredSignal = null) {
+  const support = checkHotRestartSupport();
   touchRestartFile();
+
+  if (!support.supported) {
+    console.log('[Sortarr Lifecycle] Redémarrage à chaud non supporté sur cet environnement.');
+    return { triggered: false, supported: false, signal: null };
+  }
+
+  const signalToUse =
+    preferredSignal && support.supportedSignals.includes(preferredSignal)
+      ? preferredSignal
+      : support.signal;
 
   try {
     if (typeof process.send === 'function') {
       process.send('restart');
-      return;
+      console.log('[Sortarr Lifecycle] Signal de redémarrage à chaud IPC envoyé.');
+      return { triggered: true, supported: true, signal: signalToUse || 'IPC' };
     }
   } catch {}
 
-  if (process.platform !== 'win32') {
+  if (process.platform !== 'win32' && signalToUse && signalToUse !== 'IPC') {
     try {
-      // Émet SIGHUP en local vers notre propre processus
-      process.kill(process.pid, 'SIGHUP');
-      return;
-    } catch {}
+      console.log(`[Sortarr Lifecycle] Émission du signal de redémarrage à chaud ${signalToUse} (PID ${process.pid})...`);
+      process.kill(process.pid, signalToUse);
+      return { triggered: true, supported: true, signal: signalToUse };
+    } catch (err) {
+      console.warn(`[Sortarr Lifecycle] Impossible d'émettre ${signalToUse} :`, err.message);
+    }
   }
 
-  // Fallback universel : sortie gracieuse après un court délai pour terminer la réponse HTTP
-  setTimeout(() => {
-    try {
-      stopScheduler();
-    } catch {}
-    process.exit(0);
-  }, 1000);
+  return { triggered: false, supported: support.supported, signal: signalToUse };
 }
 
 /**
