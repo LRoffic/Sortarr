@@ -139,7 +139,21 @@ export function shouldTagIndexer(idx, config) {
     return { shouldTag: false, keepExisting: false, reason: 'Freeleech actif (exempté)' };
   }
 
-  // 4. Vérification du ratio réel
+  // 4. Stop download sur buffer : tag si le buffer (octets -> Go) est inférieur au seuil configuré
+  const rawBuffer = idx.tracker?.buffer;
+  const bufferGb = typeof rawBuffer === 'number' && Number.isFinite(rawBuffer)
+    ? rawBuffer / 1024 ** 3
+    : null;
+  const bufferThresholdGb = typeof config.taggingBufferThresholdGb === 'number'
+    ? config.taggingBufferThresholdGb
+    : parseFloat(config.taggingBufferThresholdGb);
+  const bufferThreshold = Number.isFinite(bufferThresholdGb) && bufferThresholdGb >= 0 ? bufferThresholdGb : 50;
+  const bufferLow = !!config.taggingStopOnBuffer && bufferGb !== null && bufferGb < bufferThreshold;
+  const bufferReason = bufferLow
+    ? `Buffer insuffisant (${bufferGb.toFixed(1)} Go < seuil ${bufferThreshold} Go)`
+    : '';
+
+  // 5. Vérification du ratio réel
   const ratio = typeof idx.tracker?.ratio === 'number' && Number.isFinite(idx.tracker.ratio)
     ? idx.tracker.ratio
     : null;
@@ -154,6 +168,8 @@ export function shouldTagIndexer(idx, config) {
         keepExisting: true,
         reason: `Ratio insuffisant (${ratio.toFixed(2)} < seuil ${threshold.toFixed(2)})`
       };
+    } else if (bufferLow) {
+      return { shouldTag: true, keepExisting: true, reason: bufferReason };
     } else {
       return {
         shouldTag: false,
@@ -163,7 +179,11 @@ export function shouldTagIndexer(idx, config) {
     }
   }
 
-  // 5. Sans stats de ratio connues ou erreur temporaire de récupération :
+  if (bufferLow) {
+    return { shouldTag: true, keepExisting: true, reason: bufferReason };
+  }
+
+  // 6. Sans stats de ratio connues ou erreur temporaire de récupération :
   // SÉCURITÉ CRITIQUE : on ne retire JAMAIS un tag existant si on n'a pas la confirmation
   // formelle que le ratio est >= seuil ! Si l'indexeur est déjà marqué, on conserve le tag.
   const alreadyTagged = !!idx.hasNoArrTag;
@@ -194,6 +214,14 @@ export async function syncAllTags(customEnriched = null, overrideConfig = null) 
       taggingExcludeFreeleech: overrideConfig.taggingExcludeFreeleech !== undefined
         ? !!overrideConfig.taggingExcludeFreeleech
         : config.taggingExcludeFreeleech,
+      taggingStopOnBuffer: overrideConfig.taggingStopOnBuffer !== undefined
+        ? !!overrideConfig.taggingStopOnBuffer
+        : config.taggingStopOnBuffer,
+      taggingBufferThresholdGb: overrideConfig.taggingBufferThresholdGb !== undefined
+        ? (Number.isFinite(parseFloat(overrideConfig.taggingBufferThresholdGb)) && parseFloat(overrideConfig.taggingBufferThresholdGb) >= 0
+            ? parseFloat(overrideConfig.taggingBufferThresholdGb)
+            : 50)
+        : config.taggingBufferThresholdGb,
       radarrUrl: overrideConfig.radarrUrl !== undefined ? String(overrideConfig.radarrUrl).trim().replace(/\/+$/, '') : config.radarrUrl,
       radarrApiKey: overrideConfig.radarrApiKey !== undefined ? String(overrideConfig.radarrApiKey).trim() : config.radarrApiKey,
       sonarrUrl: overrideConfig.sonarrUrl !== undefined ? String(overrideConfig.sonarrUrl).trim().replace(/\/+$/, '') : config.sonarrUrl,

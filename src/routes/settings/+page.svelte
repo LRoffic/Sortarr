@@ -191,6 +191,8 @@
   let taggingTag = $state(untrack(() => data.config.taggingTag ?? 'no-arr'));
   let taggingRatioThreshold = $state(untrack(() => data.config.taggingRatioThreshold ?? 1.0));
   let taggingExcludeFreeleech = $state(untrack(() => data.config.taggingExcludeFreeleech !== false));
+  let taggingStopOnBuffer = $state(untrack(() => !!data.config.taggingStopOnBuffer));
+  let taggingBufferThresholdGb = $state(untrack(() => data.config.taggingBufferThresholdGb ?? 50));
   let radarrUrl = $state(untrack(() => data.config.radarrUrl ?? ''));
   let radarrApiKey = $state(untrack(() => data.config.radarrApiKey ?? ''));
   let sonarrUrl = $state(untrack(() => data.config.sonarrUrl ?? ''));
@@ -282,6 +284,8 @@
           taggingTag,
           taggingRatioThreshold,
           taggingExcludeFreeleech,
+          taggingStopOnBuffer,
+          taggingBufferThresholdGb,
           radarrUrl,
           radarrApiKey,
           sonarrUrl,
@@ -310,6 +314,8 @@
       taggingTag,
       taggingRatioThreshold,
       taggingExcludeFreeleech,
+      taggingStopOnBuffer,
+      taggingBufferThresholdGb,
       radarrUrl,
       radarrApiKey,
       sonarrUrl,
@@ -791,6 +797,8 @@
       taggingTag,
       taggingRatioThreshold,
       taggingExcludeFreeleech,
+      taggingStopOnBuffer,
+      taggingBufferThresholdGb,
       radarrUrl,
       radarrApiKey,
       sonarrUrl,
@@ -1202,6 +1210,46 @@
                 </div>
               </div>
             </label>
+          </div>
+
+          <!-- Stop download sur buffer -->
+          <div class="rounded-lg p-3 space-y-3" style="background: var(--bg-card); border: 1px solid var(--border);">
+            <label class="flex items-center gap-3 cursor-pointer select-none text-xs">
+              <input
+                type="checkbox"
+                name="taggingStopOnBuffer"
+                bind:checked={taggingStopOnBuffer}
+                class="w-4 h-4 rounded accent-purple-600 cursor-pointer"
+              />
+              <div>
+                <span class="font-semibold text-sky-400">🛑 Stop download sur buffer</span>
+                <div class="text-[11px] mt-0.5" style="color: var(--text-muted);">
+                  Applique aussi le tag (et bloque donc les téléchargements Radarr / Sonarr) lorsque le buffer du tracker passe sous la quantité définie ci-dessous, même si le ratio est suffisant. Le tag est retiré dès que le buffer repasse au-dessus du seuil.
+                </div>
+              </div>
+            </label>
+
+            {#if taggingStopOnBuffer}
+              <div class="max-w-xs">
+                <label class="block text-xs font-semibold mb-1.5" for="taggingBufferThresholdGb">
+                  📦 Buffer minimum (Go)
+                </label>
+                <input
+                  id="taggingBufferThresholdGb"
+                  name="taggingBufferThresholdGb"
+                  type="number"
+                  step="1"
+                  min="0"
+                  bind:value={taggingBufferThresholdGb}
+                  placeholder="50"
+                  class="w-full px-3 py-2 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  style="background: var(--bg-card); border: 1px solid var(--border); color: #e2e8f0;"
+                />
+                <p class="text-[11px] mt-1" style="color: var(--text-muted);">
+                  Par défaut <code>50</code> Go. Si le buffer réel du tracker est &lt; seuil, le tag est ajouté. Les trackers sans buffer connu, publics, à ratio infini ou en Freeleech (si exemptés) ne sont pas concernés.
+                </p>
+              </div>
+            {/if}
           </div>
 
           <!-- Association directe Radarr & Sonarr -->

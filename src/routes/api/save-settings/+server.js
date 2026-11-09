@@ -30,6 +30,11 @@ export async function POST({ request }) {
     ? body.taggingRatioThreshold
     : parseFloat(body.taggingRatioThreshold) || 1.0;
   const taggingExcludeFreeleech = body.taggingExcludeFreeleech !== false;
+  const taggingStopOnBuffer = body.taggingStopOnBuffer === true;
+  const parsedBufferGb = typeof body.taggingBufferThresholdGb === 'number'
+    ? body.taggingBufferThresholdGb
+    : parseFloat(body.taggingBufferThresholdGb);
+  const taggingBufferThresholdGb = Number.isFinite(parsedBufferGb) && parsedBufferGb >= 0 ? parsedBufferGb : 50;
   const radarrUrl = String(body.radarrUrl ?? '').trim().replace(/\/+$/, '');
   const radarrApiKey = String(body.radarrApiKey ?? '').trim();
   const sonarrUrl = String(body.sonarrUrl ?? '').trim().replace(/\/+$/, '');
@@ -112,6 +117,8 @@ export async function POST({ request }) {
       taggingTag,
       taggingRatioThreshold,
       taggingExcludeFreeleech,
+      taggingStopOnBuffer,
+      taggingBufferThresholdGb,
       radarrUrl,
       radarrApiKey,
       sonarrUrl,

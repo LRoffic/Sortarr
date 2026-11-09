@@ -159,6 +159,12 @@ export const settingsSchema = yup.object({
     .max(100, 'Seuil de ratio trop élevé')
     .default(1.0),
   taggingExcludeFreeleech: yup.boolean().default(true),
+  taggingStopOnBuffer: yup.boolean().default(false),
+  taggingBufferThresholdGb: yup
+    .number()
+    .min(0, 'Le seuil de buffer ne peut pas être négatif')
+    .max(1000000, 'Seuil de buffer trop élevé')
+    .default(50),
   radarrUrl: yup
     .string()
     .trim()

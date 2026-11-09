@@ -23,6 +23,9 @@ const defaultConfig = {
   taggingTag: 'no-arr',
   taggingRatioThreshold: 1.0,
   taggingExcludeFreeleech: true,
+  // Stop download : tag également les trackers dont le buffer (en Go) est inférieur à ce seuil
+  taggingStopOnBuffer: false,
+  taggingBufferThresholdGb: 50,
   radarrUrl: '',
   radarrApiKey: '',
   sonarrUrl: '',
