@@ -42,37 +42,52 @@ describe('Paliers logic & formatting', () => {
     expect(formatPalierGB(0)).toBe('0 Go');
   });
 
-  it('uses global paliers when mode is global', () => {
+  it('falls back to global paliers when the tracker has no overrides', () => {
     const config = {
       mode: 'global',
       global: { ratio: 5.0, uploadGB: 4096 }
     };
-    const trackers = {
-      12: { paliers: { ratio: 2.0 } }
-    };
 
-    const effective = getEffectivePaliers(12, config, trackers);
+    const effective = getEffectivePaliers(12, config, { 12: {} });
     expect(effective.ratio).toBe(5.0);
     expect(effective.uploadGB).toBe(4096);
   });
 
-  it('uses tracker paliers when mode is tracker and overrides exist', () => {
-    const config = {
+  it('always applies per-tracker paliers regardless of the legacy mode flag', () => {
+    const trackers = { 12: { paliers: { ratio: 2.0 } } };
+
+    expect(getEffectivePaliers(12, { mode: 'global', global: { ratio: 5.0 } }, trackers).ratio).toBe(2.0);
+    expect(getEffectivePaliers(12, undefined, trackers).ratio).toBe(2.0);
+  });
+
+  it('uses tracker paliers when overrides exist, and falls back to global only when globalEnabled is true', () => {
+    const configWithGlobal = {
       mode: 'tracker',
+      globalEnabled: true,
       global: { ratio: 5.0, uploadGB: 4096 }
     };
     const trackers = {
       12: { paliers: { ratio: 2.5, bufferGB: 512 } },
-      14: {} // Pas de paliers spécifiques -> fallback global
+      14: {} // Pas de paliers spécifiques -> fallback global si activé
     };
 
-    const eff12 = getEffectivePaliers(12, config, trackers);
+    const eff12 = getEffectivePaliers(12, configWithGlobal, trackers);
     expect(eff12.ratio).toBe(2.5);
     expect(eff12.bufferGB).toBe(512);
-    expect(eff12.uploadGB).toBe(4096); // Fallback sur global
+    expect(eff12.uploadGB).toBe(4096); // Fallback sur global activé
 
-    const eff14 = getEffectivePaliers(14, config, trackers);
+    const eff14 = getEffectivePaliers(14, configWithGlobal, trackers);
     expect(eff14.ratio).toBe(5.0);
+
+    // Si globalEnabled est false, fallback sur DEFAULT_PALIERS
+    const configWithoutGlobal = {
+      mode: 'tracker',
+      globalEnabled: false,
+      global: { ratio: 5.0, uploadGB: 4096 }
+    };
+    expect(getEffectivePaliers(14, configWithoutGlobal, trackers).ratio).toBe(DEFAULT_PALIERS.ratio);
+    expect(getEffectivePaliers(12, configWithoutGlobal, trackers).ratio).toBe(2.5);
+    expect(getEffectivePaliers(12, configWithoutGlobal, trackers).uploadGB).toBe(DEFAULT_PALIERS.uploadGB);
   });
 
   it('computes progress percentages and bar widths properly', () => {

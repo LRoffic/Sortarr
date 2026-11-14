@@ -125,7 +125,8 @@ export async function POST({ request }) {
       sonarrApiKey,
       trackers,
       statsPaliers: body.statsPaliers ? {
-        mode: body.statsPaliers.mode === 'tracker' ? 'tracker' : 'global',
+        mode: body.statsPaliers.mode === 'global' ? 'global' : 'tracker',
+        globalEnabled: Boolean(body.statsPaliers.globalEnabled),
         global: {
           ratio: Number(body.statsPaliers.global?.ratio) > 0 ? Number(body.statsPaliers.global.ratio) : 4.0,
           uploadGB: Number(body.statsPaliers.global?.uploadGB) > 0 ? Number(body.statsPaliers.global.uploadGB) : 2048,

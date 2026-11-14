@@ -30,9 +30,10 @@ const defaultConfig = {
   radarrApiKey: '',
   sonarrUrl: '',
   sonarrApiKey: '',
-  // Paliers d'objectifs pour les jauges de statistiques (global vs par tracker)
+  // Paliers d'objectifs pour les jauges de statistiques (par tracker avec repli global optionnel)
   statsPaliers: {
-    mode: 'global', // 'global' | 'tracker'
+    mode: 'tracker', // 'global' | 'tracker'
+    globalEnabled: false,
     global: {
       ratio: 4.0,
       uploadGB: 2048,

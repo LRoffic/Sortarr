@@ -189,7 +189,8 @@ export const settingsSchema = yup.object({
   telemetryEnabled: yup.boolean().default(true),
   statsPaliers: yup
     .object({
-      mode: yup.string().oneOf(['global', 'tracker']).default('global'),
+      mode: yup.string().oneOf(['global', 'tracker']).default('tracker'),
+      globalEnabled: yup.boolean().default(false),
       global: yup
         .object({
           ratio: yup.number().min(0.1).max(100).nullable().optional(),

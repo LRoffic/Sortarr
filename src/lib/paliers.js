@@ -1,6 +1,6 @@
 /**
  * Module de gestion des paliers de statistiques (Ratio, Upload, Download, Buffer, Points, Astra, Seeds).
- * Supporte le mode 'global' (paliers partagés) et le mode 'tracker' (paliers personnalisés par tracker).
+ * Les paliers se règlent par tracker (dans la configuration de chaque tracker) ; les valeurs par défaut servent de repli.
  */
 
 export const DEFAULT_PALIERS = {
@@ -39,31 +39,36 @@ export function normalizePaliers(raw = {}, fallback = DEFAULT_PALIERS) {
 
 /**
  * Récupère les paliers effectifs pour un tracker donné.
- * Si le mode est 'tracker' et que le tracker a configuré ses propres paliers, on les utilise.
- * Sinon, on utilise les paliers globaux configurés (ou les valeurs par défaut).
+ * Si le tracker a configuré ses propres paliers (dans sa configuration), on les utilise,
+ * les champs non renseignés retombent sur les valeurs par défaut (ou les anciens paliers globaux).
  *
  * @param {string|number|null} trackerId
- * @param {{ mode?: string, global?: any }} statsPaliersConfig
+ * @param {{ global?: any }} statsPaliersConfig
  * @param {Record<string, any>} [trackersConfig]
  * @returns {typeof DEFAULT_PALIERS}
  */
 export function getEffectivePaliers(trackerId, statsPaliersConfig, trackersConfig = {}) {
-  const mode = statsPaliersConfig?.mode === 'tracker' ? 'tracker' : 'global';
-  const globalPaliers = normalizePaliers(statsPaliersConfig?.global, DEFAULT_PALIERS);
+  const globalEnabled =
+    statsPaliersConfig?.globalEnabled !== undefined
+      ? Boolean(statsPaliersConfig.globalEnabled)
+      : statsPaliersConfig?.mode === 'global';
+  const fallbackPaliers = globalEnabled
+    ? normalizePaliers(statsPaliersConfig?.global, DEFAULT_PALIERS)
+    : DEFAULT_PALIERS;
 
-  if (mode === 'global' || !trackerId) {
-    return globalPaliers;
+  if (!trackerId) {
+    return fallbackPaliers;
   }
 
   const trackerConf = trackersConfig[trackerId] || trackersConfig[String(trackerId)];
   const trackerPaliers = trackerConf?.paliers;
 
   if (!trackerPaliers || typeof trackerPaliers !== 'object') {
-    return globalPaliers;
+    return fallbackPaliers;
   }
 
-  // Fusion avec les paliers globaux comme fallback pour les champs non renseignés
-  return normalizePaliers(trackerPaliers, globalPaliers);
+  // Fusion avec les paliers globaux (si activés) ou par défaut pour les champs non renseignés
+  return normalizePaliers(trackerPaliers, fallbackPaliers);
 }
 
 /**
